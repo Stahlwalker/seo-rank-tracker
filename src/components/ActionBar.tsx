@@ -5,23 +5,17 @@ import ImportModal from './ImportModal';
 import { UrlKeywordPair } from '../types';
 
 interface ActionBarProps {
-  onAddUrl: (newPair: UrlKeywordPair) => void;
-  onImport: (data: UrlKeywordPair[]) => void;
-  onExport: () => void;
   onRefresh: () => void;
+  onExport: () => void;
+  onMonthlyUpdate: () => void;
   data: UrlKeywordPair[];
-  isAuthenticated: boolean;
-  useLocalStorage: boolean;
 }
 
 const ActionBar: React.FC<ActionBarProps> = ({ 
-  onAddUrl, 
-  onImport, 
-  onExport,
   onRefresh,
-  data,
-  isAuthenticated,
-  useLocalStorage
+  onExport,
+  onMonthlyUpdate,
+  data
 }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -51,7 +45,7 @@ const ActionBar: React.FC<ActionBarProps> = ({
           <button
             onClick={onRefresh}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center"
-            title="Simulate refreshing current rankings"
+            title="Refresh current rankings"
           >
             <RefreshCw className="h-4 w-4 mr-1" />
             Refresh Rankings
@@ -59,15 +53,24 @@ const ActionBar: React.FC<ActionBarProps> = ({
           
           <button
             onClick={onExport}
-            disabled={data.length === 0}
+            disabled={!data || data.length === 0}
             className={`px-4 py-2 rounded-md flex items-center ${
-              data.length === 0 
+              !data || data.length === 0 
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                 : 'bg-purple-600 text-white hover:bg-purple-700'
             }`}
           >
             <Download className="h-4 w-4 mr-1" />
             Export
+          </button>
+          
+          <button
+            onClick={onMonthlyUpdate}
+            className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 flex items-center"
+            title="Simulate monthly update"
+          >
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Monthly Update
           </button>
         </div>
       </div>
@@ -76,13 +79,8 @@ const ActionBar: React.FC<ActionBarProps> = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-md">
             <AddUrlForm 
-              onAdd={(newPair) => {
-                onAddUrl(newPair);
-                setShowAddForm(false);
-              }}
+              onAdd={() => setShowAddForm(false)}
               onClose={() => setShowAddForm(false)}
-              isAuthenticated={isAuthenticated}
-              useLocalStorage={useLocalStorage}
             />
           </div>
         </div>
@@ -92,10 +90,8 @@ const ActionBar: React.FC<ActionBarProps> = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-md">
             <ImportModal
-              onImport={onImport}
+              onImport={() => setShowImportModal(false)}
               onClose={() => setShowImportModal(false)}
-              isAuthenticated={isAuthenticated}
-              useLocalStorage={useLocalStorage}
             />
           </div>
         </div>
