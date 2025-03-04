@@ -10,6 +10,8 @@ interface ActionBarProps {
   onExport: () => void;
   onRefresh: () => void;
   data: UrlKeywordPair[];
+  isAuthenticated: boolean;
+  useLocalStorage: boolean;
 }
 
 const ActionBar: React.FC<ActionBarProps> = ({ 
@@ -17,7 +19,9 @@ const ActionBar: React.FC<ActionBarProps> = ({
   onImport, 
   onExport,
   onRefresh,
-  data 
+  data,
+  isAuthenticated,
+  useLocalStorage
 }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -77,6 +81,8 @@ const ActionBar: React.FC<ActionBarProps> = ({
                 setShowAddForm(false);
               }}
               onClose={() => setShowAddForm(false)}
+              isAuthenticated={isAuthenticated}
+              useLocalStorage={useLocalStorage}
             />
           </div>
         </div>
@@ -88,6 +94,8 @@ const ActionBar: React.FC<ActionBarProps> = ({
             <ImportModal
               onImport={onImport}
               onClose={() => setShowImportModal(false)}
+              isAuthenticated={isAuthenticated}
+              useLocalStorage={useLocalStorage}
             />
           </div>
         </div>

@@ -12,4 +12,19 @@ export interface UrlKeywordPair {
   rankingHistory: RankingData[];
   note?: string;
   status?: 'Testing' | 'Needs Improvement' | '';
+  lastUpdated?: string;
+}
+
+export interface GoogleSearchResult {
+  position: number;
+  title: string;
+  link: string;
+  snippet: string;
+}
+
+export interface GoogleSearchResponse {
+  keyword: string;
+  results: GoogleSearchResult[];
+  totalResults: number;
+  targetPosition?: number | null;
 }

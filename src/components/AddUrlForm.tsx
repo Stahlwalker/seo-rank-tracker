@@ -3,10 +3,14 @@ import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 import { Plus, X } from 'lucide-react';
 import { UrlKeywordPair } from '../types';
+import { format } from 'date-fns';
+import { addUrlData } from '../utils/storage';
 
 interface AddUrlFormProps {
   onAdd: (newPair: UrlKeywordPair) => void;
   onClose: () => void;
+  isAuthenticated: boolean;
+  useLocalStorage: boolean;
 }
 
 interface FormValues {
@@ -18,23 +22,41 @@ interface FormValues {
   status: '' | 'Testing' | 'Needs Improvement';
 }
 
-const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
+const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose, isAuthenticated, useLocalStorage }) => {
   const { register, handleSubmit, formState: { errors }, reset } = useForm<FormValues>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const onSubmit = (data: FormValues) => {
-    const newPair: UrlKeywordPair = {
-      id: uuidv4(),
-      url: data.url,
-      keyword: data.keyword,
-      monthlySearchVolume: data.monthlySearchVolume ? parseInt(data.monthlySearchVolume, 10) : undefined,
-      currentRanking: data.currentRanking ? parseInt(data.currentRanking, 10) : null,
-      rankingHistory: [],
-      note: data.note || undefined,
-      status: data.status || undefined
-    };
+  const onSubmit = async (data: FormValues) => {
+    setIsSubmitting(true);
     
-    onAdd(newPair);
-    reset();
+    try {
+      const newPair: UrlKeywordPair = {
+        id: uuidv4(),
+        url: data.url,
+        keyword: data.keyword,
+        monthlySearchVolume: data.monthlySearchVolume ? parseInt(data.monthlySearchVolume, 10) : undefined,
+        currentRanking: data.currentRanking ? parseInt(data.currentRanking, 10) : null,
+        rankingHistory: [],
+        note: data.note || undefined,
+        status: data.status || undefined,
+        lastUpdated: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+      };
+      
+      // Add to state via parent component
+      onAdd(newPair);
+      
+      // Also add to localStorage directly as a backup if using localStorage
+      if (useLocalStorage) {
+        addUrlData(newPair);
+      }
+      
+      reset();
+      onClose();
+    } catch (error) {
+      console.error('Error adding URL:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   return (
@@ -48,6 +70,20 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
           <X className="h-5 w-5" />
         </button>
       </div>
+      
+      {useLocalStorage ? (
+        <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-500 text-green-700 text-sm">
+          This URL will be stored in your browser's local storage.
+        </div>
+      ) : !isAuthenticated ? (
+        <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 text-blue-700 text-sm">
+          You're not signed in. This URL will be stored in your browser's local storage.
+        </div>
+      ) : (
+        <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 text-blue-700 text-sm">
+          This URL will be stored in the cloud and accessible from any device.
+        </div>
+      )}
       
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="mb-4">
@@ -149,15 +185,31 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
             type="button"
             onClick={onClose}
             className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 mr-2 hover:bg-gray-50"
+            disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+            disabled={isSubmitting}
+            className={`px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center ${
+              isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+            }`}
           >
-            <Plus className="h-4 w-4 mr-1" />
-            Add URL
+            {isSubmitting ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Adding...
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4 mr-1" />
+                Add URL
+              </>
+            )}
           </button>
         </div>
       </form>

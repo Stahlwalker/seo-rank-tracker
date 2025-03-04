@@ -9,23 +9,33 @@ import {
   FilterFn,
   getFilteredRowModel,
 } from '@tanstack/react-table';
-import { ArrowUpDown, Trash2, ExternalLink, Filter, Search, X, Edit, Save, XCircle, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { ArrowUpDown, Trash2, ExternalLink, Filter, Search, X, Edit, Save, XCircle, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { UrlKeywordPair } from '../types';
 import { format, parseISO, isValid } from 'date-fns';
+import GoogleSearchModal from './GoogleSearchModal';
+import { updateUrlData } from '../utils/storage';
 
 interface RankingTableProps {
   data: UrlKeywordPair[];
   onDelete: (id: string) => void;
   onUpdateNote: (id: string, note: string | undefined) => void;
   onUpdateStatus: (id: string, status: 'Testing' | 'Needs Improvement' | '') => void;
+  onUpdateRanking: (id: string, ranking: number) => void;
 }
 
-const RankingTable: React.FC<RankingTableProps> = ({ data, onDelete, onUpdateNote, onUpdateStatus }) => {
+const RankingTable: React.FC<RankingTableProps> = ({ 
+  data, 
+  onDelete, 
+  onUpdateNote, 
+  onUpdateStatus,
+  onUpdateRanking
+}) => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState<string>('');
+  const [selectedPair, setSelectedPair] = useState<UrlKeywordPair | null>(null);
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
   
   const columnHelper = createColumnHelper<UrlKeywordPair>();
@@ -102,15 +112,40 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onDelete, onUpdateNot
       })
     ),
     columnHelper.accessor('currentRanking', {
-      header: 'Current Ranking',
+      header: () => (
+        <div className="flex items-center">
+          Current Ranking
+          <span className="ml-1 text-xs text-blue-600 font-normal">(click to check)</span>
+        </div>
+      ),
       cell: info => {
         const value = info.getValue();
-        return value !== null ? (
-          <span className={`font-medium ${value <= 10 ? 'text-green-600' : value <= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
-            {value}
-          </span>
-        ) : (
-          <span className="text-gray-400">-</span>
+        const lastUpdated = info.row.original.lastUpdated;
+        
+        return (
+          <div className="flex items-center">
+            {value !== null ? (
+              <span className={`font-medium ${value <= 10 ? 'text-green-600' : value <= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
+                {value}
+              </span>
+            ) : (
+              <span className="text-gray-400">-</span>
+            )}
+            
+            <button
+              onClick={() => setSelectedPair(info.row.original)}
+              className="ml-2 text-blue-500 hover:text-blue-700 p-1"
+              title="Check Google ranking"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+            
+            {lastUpdated && (
+              <span className="ml-2 text-xs text-gray-400" title={`Last updated: ${lastUpdated}`}>
+                {format(new Date(lastUpdated), 'MM/dd/yy')}
+              </span>
+            )}
+          </div>
         );
       },
     }),
@@ -124,7 +159,14 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onDelete, onUpdateNot
           <div className="flex items-center">
             <select
               value={value || ''}
-              onChange={(e) => onUpdateStatus(id, e.target.value as 'Testing' | 'Needs Improvement' | '')}
+              onChange={(e) => {
+                const newStatus = e.target.value as 'Testing' | 'Needs Improvement' | '';
+                onUpdateStatus(id, newStatus);
+                
+                // Update in localStorage
+                const updatedItem = {...info.row.original, status: newStatus};
+                updateUrlData(updatedItem);
+              }}
               className={`px-2 py-1 text-sm rounded-md border ${
                 value === 'Testing' 
                   ? 'bg-blue-50 text-blue-700 border-blue-200' 
@@ -168,7 +210,13 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onDelete, onUpdateNot
               <div className="flex flex-col ml-2">
                 <button
                   onClick={() => {
-                    onUpdateNote(id, noteText || undefined);
+                    const newNote = noteText || undefined;
+                    onUpdateNote(id, newNote);
+                    
+                    // Update in localStorage
+                    const updatedItem = {...info.row.original, note: newNote};
+                    updateUrlData(updatedItem);
+                    
                     setEditingNoteId(null);
                   }}
                   className="text-green-500 hover:text-green-700 p-1"
@@ -305,6 +353,22 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onDelete, onUpdateNot
     setSearchTerm('');
   };
   
+  // Handle ranking update from Google Search Modal
+  const handleUpdateRanking = (id: string, ranking: number) => {
+    onUpdateRanking(id, ranking);
+    
+    // Also update in localStorage
+    const item = data.find(item => item.id === id);
+    if (item) {
+      const updatedItem = {
+        ...item,
+        currentRanking: ranking,
+        lastUpdated: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+      };
+      updateUrlData(updatedItem);
+    }
+  };
+  
   return (
     <div>
       <div className="bg-white p-4 border-b border-gray-200">
@@ -377,68 +441,32 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onDelete, onUpdateNot
             />
           </div>
         </div>
-        
-        {(activeFilters.length > 0 || searchTerm) && (
-          <div className="flex items-center text-sm text-gray-600 mt-2">
-            <span className="mr-2">Active filters:</span>
-            <div className="flex flex-wrap gap-1">
-              {activeFilters.map(filter => (
-                <span key={filter} className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full flex items-center">
-                  {filter === 'top10' && 'Top 10'}
-                  {filter === 'top20' && 'Positions 11-20'}
-                  {filter === 'top30' && 'Positions 21-30'}
-                  {filter === 'below30' && 'Below 30'}
-                  <button 
-                    onClick={() => toggleFilter(filter)}
-                    className="ml-1 text-blue-600 hover:text-blue-800"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-              {searchTerm && (
-                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full flex items-center">
-                  Search: {searchTerm}
-                  <button 
-                    onClick={() => setSearchTerm('')}
-                    className="ml-1 text-blue-600 hover:text-blue-800"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              )}
-            </div>
-          </div>
-        )}
       </div>
       
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
-            {table.getHeaderGroups().map(headerGroup => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map(header => (
-                  <th
-                    key={header.id}
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
-                  >
-                    {header.isPlaceholder ? null : (
-                      <div
-                        className={header.column.getCanSort() ? 'cursor-pointer select-none flex items-center' : ''}
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        
-                        {header.column.getCanSort() && (
-                          <ArrowUpDown className="ml-1 h-3 w-3" />
-                        )}
-                      </div>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            ))}
+            <tr>
+              {table.getFlatHeaders().map(header => (
+                <th 
+                  key={header.id} 
+                  scope="col" 
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  {header.isPlaceholder ? null : (
+                    <div
+                      className={header.column.getCanSort() ? 'cursor-pointer select-none flex items-center' : ''}
+                      onClick={header.column.getToggleSortingHandler()}
+                    >
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.column.getCanSort() && (
+                        <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
+                      )}
+                    </div>
+                  )}
+                </th>
+              ))}
+            </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {table.getRowModel().rows.length > 0 ? (
@@ -453,10 +481,8 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onDelete, onUpdateNot
               ))
             ) : (
               <tr>
-                <td colSpan={columns.length} className="px-6 py-4 text-center text-sm text-gray-500">
-                  {activeFilters.length > 0 || searchTerm 
-                    ? 'No data matches your filter criteria. Try adjusting your filters.'
-                    : 'No data available. Add URLs to start tracking.'}
+                <td colSpan={table.getAllColumns().length} className="px-6 py-4 text-center text-sm text-gray-500">
+                  {searchTerm || activeFilters.length > 0 ? 'No results match your search criteria' : 'No data available'}
                 </td>
               </tr>
             )}
@@ -464,26 +490,15 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onDelete, onUpdateNot
         </table>
       </div>
       
-      <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
-        <div className="flex justify-between items-center">
-          <div className="text-sm text-gray-500">
-            Showing {table.getRowModel().rows.length} of {data.length} URLs
-          </div>
-          <div className="text-sm text-gray-500">
-            {activeFilters.length > 0 && (
-              <span className="text-blue-600 font-medium">
-                Filtered by: {activeFilters.map(f => {
-                  if (f === 'top10') return 'Top 10';
-                  if (f === 'top20') return 'Positions 11-20';
-                  if (f === 'top30') return 'Positions 21-30';
-                  if (f === 'below30') return 'Below 30';
-                  return f;
-                }).join(', ')}
-              </span>
-            )}
-          </div>
+      {selectedPair && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <GoogleSearchModal
+            urlKeywordPair={selectedPair}
+            onClose={() => setSelectedPair(null)}
+            onUpdateRanking={handleUpdateRanking}
+          />
         </div>
-      </div>
+      )}
     </div>
   );
 };
