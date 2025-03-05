@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { v4 as uuidv4 } from 'uuid';
 import { Plus, X } from 'lucide-react';
 import { UrlKeywordPair } from '../types';
 import { format } from 'date-fns';
 import { addUrlKeywordPair } from '../services/supabaseService';
 
 interface AddUrlFormProps {
-  onAdd: () => void;
+  onAdd: (newPair: UrlKeywordPair) => void;
   onClose: () => void;
 }
 
@@ -30,8 +29,7 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
     setError(null);
     
     try {
-      const newPair: UrlKeywordPair = {
-        id: uuidv4(),
+      const newPair: Omit<UrlKeywordPair, 'id'> = {
         url: data.url,
         keyword: data.keyword,
         monthlySearchVolume: data.monthlySearchVolume ? parseInt(data.monthlySearchVolume, 10) : undefined,
@@ -42,16 +40,17 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
         lastUpdated: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
       };
       
-      const result = await addUrlKeywordPair(newPair);
+      const result = await addUrlKeywordPair(newPair as UrlKeywordPair);
       if (result) {
+        onAdd(result);
         reset();
-        onAdd();
+        onClose();
       } else {
-        setError('Failed to add URL. Please try again.');
+        throw new Error('Failed to add URL to database');
       }
     } catch (error) {
       console.error('Error adding URL:', error);
-      setError('An unexpected error occurred. Please try again.');
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

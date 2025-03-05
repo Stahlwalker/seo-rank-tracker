@@ -11,35 +11,29 @@ import {
 } from '@tanstack/react-table';
 import { ArrowUpDown, Trash2, ExternalLink, Filter, Search, X, Edit, Save, XCircle, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { UrlKeywordPair } from '../types';
-import { format, parseISO, isValid } from 'date-fns';
+import { format } from 'date-fns';
 import GoogleSearchModal from './GoogleSearchModal';
-import { updateUrlData } from '../utils/storage';
+import { deleteUrlKeywordPair, updateUrlKeywordPair } from '../services/supabaseService';
 
 interface RankingTableProps {
   data: UrlKeywordPair[];
-  onDelete: (id: string) => void;
-  onUpdateNote: (id: string, note: string | undefined) => void;
-  onUpdateStatus: (id: string, status: 'Testing' | 'Needs Improvement' | '') => void;
-  onUpdateRanking: (id: string, ranking: number) => void;
+  setData: React.Dispatch<React.SetStateAction<UrlKeywordPair[]>>;
+  isLoading: boolean;
 }
 
-const RankingTable: React.FC<RankingTableProps> = ({ 
-  data, 
-  onDelete, 
-  onUpdateNote, 
-  onUpdateStatus,
-  onUpdateRanking
-}) => {
+const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading }) => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState<string>('');
   const [selectedPair, setSelectedPair] = useState<UrlKeywordPair | null>(null);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
-  
+
   const columnHelper = createColumnHelper<UrlKeywordPair>();
-  
+
   // Generate an array of month names from August 2023 to current month
   const generateMonthColumns = () => {
     const months = [];
@@ -54,9 +48,66 @@ const RankingTable: React.FC<RankingTableProps> = ({
     
     return months;
   };
-  
+
   const monthColumns = generateMonthColumns();
-  
+
+  const handleDelete = async (id: string) => {
+    try {
+      setDeletingIds(prev => new Set([...prev, id]));
+      setError(null);
+
+      await deleteUrlKeywordPair(id);
+      setData(prevData => prevData.filter(item => item.id !== id));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to delete item');
+      console.error('Error deleting item:', error);
+    } finally {
+      setDeletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
+  const handleUpdateNote = async (id: string, note: string | undefined) => {
+    try {
+      const item = data.find(item => item.id === id);
+      if (!item) return;
+
+      const updatedItem = { ...item, note };
+      const result = await updateUrlKeywordPair(updatedItem);
+      
+      if (result) {
+        setData(prevData => prevData.map(item => 
+          item.id === id ? result : item
+        ));
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to update note');
+      console.error('Error updating note:', error);
+    }
+  };
+
+  const handleUpdateStatus = async (id: string, status: 'Testing' | 'Needs Improvement' | '') => {
+    try {
+      const item = data.find(item => item.id === id);
+      if (!item) return;
+
+      const updatedItem = { ...item, status };
+      const result = await updateUrlKeywordPair(updatedItem);
+      
+      if (result) {
+        setData(prevData => prevData.map(item => 
+          item.id === id ? result : item
+        ));
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to update status');
+      console.error('Error updating status:', error);
+    }
+  };
+
   const columns = [
     columnHelper.accessor('url', {
       header: 'URL',
@@ -102,7 +153,11 @@ const RankingTable: React.FC<RankingTableProps> = ({
         cell: info => {
           const value = info.getValue();
           return value !== null ? (
-            <span className={`font-medium ${value <= 10 ? 'text-green-600' : value <= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
+            <span className={`font-medium ${
+              value <= 10 ? 'text-green-600' : 
+              value <= 20 ? 'text-yellow-600' : 
+              'text-red-600'
+            }`}>
               {value}
             </span>
           ) : (
@@ -125,20 +180,16 @@ const RankingTable: React.FC<RankingTableProps> = ({
         return (
           <div className="flex items-center">
             {value !== null ? (
-              <span className={`font-medium ${value <= 10 ? 'text-green-600' : value <= 20 ? 'text-yellow-600' : 'text-red-600'}`}>
+              <span className={`font-medium ${
+                value <= 10 ? 'text-green-600' : 
+                value <= 20 ? 'text-yellow-600' : 
+                'text-red-600'
+              }`}>
                 {value}
               </span>
             ) : (
               <span className="text-gray-400">-</span>
             )}
-            
-            <button
-              onClick={() => setSelectedPair(info.row.original)}
-              className="ml-2 text-blue-500 hover:text-blue-700 p-1"
-              title="Check Google ranking"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </button>
             
             {lastUpdated && (
               <span className="ml-2 text-xs text-gray-400" title={`Last updated: ${lastUpdated}`}>
@@ -152,21 +203,16 @@ const RankingTable: React.FC<RankingTableProps> = ({
     columnHelper.accessor('status', {
       header: 'Status',
       cell: info => {
-        const id = info.row.original.id;
         const value = info.getValue();
         
         return (
           <div className="flex items-center">
             <select
               value={value || ''}
-              onChange={(e) => {
-                const newStatus = e.target.value as 'Testing' | 'Needs Improvement' | '';
-                onUpdateStatus(id, newStatus);
-                
-                // Update in localStorage
-                const updatedItem = {...info.row.original, status: newStatus};
-                updateUrlData(updatedItem);
-              }}
+              onChange={(e) => handleUpdateStatus(
+                info.row.original.id, 
+                e.target.value as 'Testing' | 'Needs Improvement' | ''
+              )}
               className={`px-2 py-1 text-sm rounded-md border ${
                 value === 'Testing' 
                   ? 'bg-blue-50 text-blue-700 border-blue-200' 
@@ -210,13 +256,7 @@ const RankingTable: React.FC<RankingTableProps> = ({
               <div className="flex flex-col ml-2">
                 <button
                   onClick={() => {
-                    const newNote = noteText || undefined;
-                    onUpdateNote(id, newNote);
-                    
-                    // Update in localStorage
-                    const updatedItem = {...info.row.original, note: newNote};
-                    updateUrlData(updatedItem);
-                    
+                    handleUpdateNote(id, noteText || undefined);
                     setEditingNoteId(null);
                   }}
                   className="text-green-500 hover:text-green-700 p-1"
@@ -249,10 +289,7 @@ const RankingTable: React.FC<RankingTableProps> = ({
               onClick={() => {
                 setEditingNoteId(id);
                 setNoteText(value || '');
-                // Focus the textarea after rendering
-                setTimeout(() => {
-                  noteInputRef.current?.focus();
-                }, 0);
+                setTimeout(() => noteInputRef.current?.focus(), 0);
               }}
               className="text-blue-500 hover:text-blue-700 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
               title="Edit note"
@@ -265,15 +302,23 @@ const RankingTable: React.FC<RankingTableProps> = ({
     }),
     columnHelper.display({
       id: 'actions',
-      cell: info => (
-        <button
-          onClick={() => onDelete(info.row.original.id)}
-          className="text-red-500 hover:text-red-700 p-1"
-          title="Delete"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
-      ),
+      cell: info => {
+        const isDeleting = deletingIds.has(info.row.original.id);
+        return (
+          <button
+            onClick={() => handleDelete(info.row.original.id)}
+            disabled={isDeleting}
+            className={`p-1 rounded ${
+              isDeleting 
+                ? 'text-gray-400 cursor-not-allowed' 
+                : 'text-red-500 hover:text-red-700 hover:bg-red-50'
+            }`}
+            title="Delete"
+          >
+            <Trash2 className={`h-4 w-4 ${isDeleting ? 'animate-pulse' : ''}`} />
+          </button>
+        );
+      },
     }),
   ];
 
@@ -352,23 +397,22 @@ const RankingTable: React.FC<RankingTableProps> = ({
     setActiveFilters([]);
     setSearchTerm('');
   };
-  
-  // Handle ranking update from Google Search Modal
-  const handleUpdateRanking = (id: string, ranking: number) => {
-    onUpdateRanking(id, ranking);
-    
-    // Also update in localStorage
-    const item = data.find(item => item.id === id);
-    if (item) {
-      const updatedItem = {
-        ...item,
-        currentRanking: ranking,
-        lastUpdated: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
-      };
-      updateUrlData(updatedItem);
-    }
-  };
-  
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-12 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="bg-white p-4 border-b border-gray-200">
@@ -443,6 +487,13 @@ const RankingTable: React.FC<RankingTableProps> = ({
         </div>
       </div>
       
+      {error && (
+        <div className="m-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
+          <p className="font-medium">Error</p>
+          <p>{error}</p>
+        </div>
+      )}
+      
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -495,7 +546,13 @@ const RankingTable: React.FC<RankingTableProps> = ({
           <GoogleSearchModal
             urlKeywordPair={selectedPair}
             onClose={() => setSelectedPair(null)}
-            onUpdateRanking={handleUpdateRanking}
+            onUpdateRanking={(id, ranking) => {
+              setData(prevData => prevData.map(item =>
+                item.id === id 
+                  ? { ...item, currentRanking: ranking, lastUpdated: format(new Date(), 'yyyy-MM-dd HH:mm:ss') }
+                  : item
+              ));
+            }}
           />
         </div>
       )}

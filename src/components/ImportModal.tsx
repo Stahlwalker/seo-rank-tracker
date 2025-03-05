@@ -2,16 +2,14 @@ import React, { useState, useRef } from 'react';
 import { Upload, Download, X, FileText } from 'lucide-react';
 import { parseCSV, generateCsvTemplate } from '../utils/csvParser';
 import { UrlKeywordPair } from '../types';
-import { saveData, loadData } from '../utils/storage';
+import { addUrlKeywordPair } from '../services/supabaseService';
 
 interface ImportModalProps {
   onImport: (data: UrlKeywordPair[]) => void;
   onClose: () => void;
-  isAuthenticated: boolean;
-  useLocalStorage: boolean;
 }
 
-const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, isAuthenticated, useLocalStorage }) => {
+const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,36 +37,29 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, isAuthenti
     try {
       const importedData = await parseCSV(file);
       
-      // Get existing data to avoid duplicates
-      const existingData = loadData();
+      // Add each URL/keyword pair to the database
+      const results = await Promise.all(
+        importedData.map(pair => addUrlKeywordPair(pair))
+      );
       
-      // Check for duplicates (same URL and keyword)
-      const newData = importedData.filter(newItem => {
-        return !existingData.some(existingItem => 
-          existingItem.url === newItem.url && existingItem.keyword === newItem.keyword
-        );
-      });
+      // Filter out failed imports (null results)
+      const successfulImports = results.filter((result): result is UrlKeywordPair => result !== null);
       
       // Set import statistics
       setImportStats({
         total: importedData.length,
-        added: newData.length,
-        duplicates: importedData.length - newData.length
+        added: successfulImports.length,
+        duplicates: importedData.length - successfulImports.length
       });
       
-      if (newData.length === 0) {
-        setError('All items already exist in your tracking list');
+      if (successfulImports.length === 0) {
+        setError('No new items were imported. They may already exist in the database.');
         setIsLoading(false);
         return;
       }
       
-      // Update localStorage with combined data if using localStorage
-      if (useLocalStorage) {
-        saveData([...existingData, ...newData]);
-      }
-      
       // Update state via parent component
-      onImport(newData);
+      onImport(successfulImports);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to parse CSV file');
@@ -104,20 +95,6 @@ const ImportModal: React.FC<ImportModalProps> = ({ onImport, onClose, isAuthenti
       </div>
       
       <div className="p-6 overflow-y-auto flex-1">
-        {useLocalStorage ? (
-          <div className="mb-4 p-3 bg-green-50 border-l-4 border-green-500 text-green-700 text-sm">
-            Imported URLs will be stored in your browser's local storage.
-          </div>
-        ) : !isAuthenticated ? (
-          <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 text-blue-700 text-sm">
-            You're not signed in. Imported URLs will be stored in your browser's local storage.
-          </div>
-        ) : (
-          <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 text-blue-700 text-sm">
-            Imported URLs will be stored in the cloud and accessible from any device.
-          </div>
-        )}
-        
         <div className="mb-6">
           <p className="text-gray-600 mb-4">
             Upload a CSV file with your URLs and keywords. The file should have the following columns: 

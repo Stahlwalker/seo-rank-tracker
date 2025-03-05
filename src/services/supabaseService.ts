@@ -1,180 +1,242 @@
-import { supabase } from '../lib/supabase';
+import { supabase, testConnection } from '../lib/supabase';
 import { UrlKeywordPair, RankingData } from '../types';
-import { v4 as uuidv4 } from 'uuid';
 
 // Convert from app model to database model
-const toDbUrlKeywordPair = (pair: UrlKeywordPair) => {
+const toDbUrlKeywordPair = (pair: Partial<UrlKeywordPair>) => {
+  const { id, rankingHistory, ...rest } = pair;
   return {
-    id: pair.id,
-    url: pair.url,
-    keyword: pair.keyword,
-    monthly_search_volume: pair.monthlySearchVolume || null,
-    current_ranking: pair.currentRanking,
-    note: pair.note || null,
-    status: pair.status || null,
-    last_updated: pair.lastUpdated || null
+    url: rest.url,
+    keyword: rest.keyword,
+    monthly_search_volume: rest.monthlySearchVolume || null,
+    current_ranking: rest.currentRanking,
+    note: rest.note || null,
+    status: rest.status || null,
+    last_updated: rest.lastUpdated || new Date().toISOString()
   };
 };
 
 // Convert from database model to app model
-const fromDbUrlKeywordPair = (dbPair: any, rankingHistory: RankingData[]): UrlKeywordPair => {
+const fromDbUrlKeywordPair = (dbPair: any, rankingHistory: RankingData[] = []): UrlKeywordPair => {
   return {
     id: dbPair.id,
     url: dbPair.url,
     keyword: dbPair.keyword,
     monthlySearchVolume: dbPair.monthly_search_volume || undefined,
     currentRanking: dbPair.current_ranking,
-    rankingHistory: rankingHistory,
+    rankingHistory,
     note: dbPair.note || undefined,
     status: dbPair.status as 'Testing' | 'Needs Improvement' | '' || undefined,
     lastUpdated: dbPair.last_updated
   };
 };
 
+// Ensure database connection before operations
+const ensureConnection = async () => {
+  try {
+    await testConnection();
+  } catch (error) {
+    // Add more context to the error
+    throw new Error(
+      `Database connection failed: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
+      'Please check your Supabase configuration and ensure you are connected to the internet.'
+    );
+  }
+};
+
 // Get all URL/keyword pairs
 export const getAllUrlKeywordPairs = async (): Promise<UrlKeywordPair[]> => {
-  // Get all URL/keyword pairs
-  const { data: pairs, error } = await supabase
-    .from('url_keyword_pairs')
-    .select('*');
-
-  if (error) {
-    console.error('Error fetching URL/keyword pairs:', error);
-    return [];
-  }
-
-  // Get all ranking history
-  const { data: history, error: historyError } = await supabase
-    .from('ranking_history')
-    .select('*');
-
-  if (historyError) {
-    console.error('Error fetching ranking history:', historyError);
-    return [];
-  }
-
-  // Map the data to our app model
-  return pairs.map(pair => {
-    const pairHistory = history
-      ? history
-        .filter(h => h.url_keyword_id === pair.id)
-        .map(h => ({ month: h.month, position: h.position }))
-      : [];
+  try {
+    await ensureConnection();
     
-    return fromDbUrlKeywordPair(pair, pairHistory);
-  });
+    // Get all URL/keyword pairs
+    const { data: pairs, error: pairsError } = await supabase
+      .from('url_keyword_pairs')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (pairsError) {
+      throw new Error(`Failed to fetch URL/keyword pairs: ${pairsError.message}`);
+    }
+
+    if (!pairs) {
+      return [];
+    }
+
+    // Get all ranking history
+    const { data: history, error: historyError } = await supabase
+      .from('ranking_history')
+      .select('*')
+      .order('month', { ascending: true });
+
+    if (historyError) {
+      throw new Error(`Failed to fetch ranking history: ${historyError.message}`);
+    }
+
+    // Map the data to our app model
+    return pairs.map(pair => {
+      const pairHistory = history
+        ? history
+          .filter(h => h.url_keyword_id === pair.id)
+          .map(h => ({ month: h.month, position: h.position }))
+        : [];
+      
+      return fromDbUrlKeywordPair(pair, pairHistory);
+    });
+  } catch (error) {
+    console.error('Error fetching URL/keyword pairs:', error);
+    throw error;
+  }
 };
 
 // Add a new URL/keyword pair
-export const addUrlKeywordPair = async (pair: UrlKeywordPair): Promise<UrlKeywordPair | null> => {
-  // Insert the URL/keyword pair
-  const { data, error } = await supabase
-    .from('url_keyword_pairs')
-    .insert(toDbUrlKeywordPair(pair))
-    .select()
-    .single();
+export const addUrlKeywordPair = async (pair: Partial<UrlKeywordPair>): Promise<UrlKeywordPair | null> => {
+  try {
+    await ensureConnection();
+    
+    const dbPair = toDbUrlKeywordPair(pair);
+    
+    // Insert the URL/keyword pair
+    const { data, error } = await supabase
+      .from('url_keyword_pairs')
+      .insert(dbPair)
+      .select()
+      .single();
 
-  if (error) {
-    console.error('Error adding URL/keyword pair:', error);
-    return null;
-  }
-
-  // Insert ranking history if any
-  if (pair.rankingHistory && pair.rankingHistory.length > 0) {
-    const historyRecords = pair.rankingHistory.map(h => ({
-      id: uuidv4(),
-      url_keyword_id: data.id,
-      month: h.month,
-      position: h.position
-    }));
-
-    const { error: historyError } = await supabase
-      .from('ranking_history')
-      .insert(historyRecords);
-
-    if (historyError) {
-      console.error('Error adding ranking history:', historyError);
+    if (error) {
+      throw new Error(`Failed to add URL/keyword pair: ${error.message}`);
     }
-  }
 
-  return fromDbUrlKeywordPair(data, pair.rankingHistory || []);
+    if (!data) {
+      throw new Error('No data returned from insert operation');
+    }
+
+    // Insert ranking history if any
+    if (pair.rankingHistory && pair.rankingHistory.length > 0) {
+      const historyRecords = pair.rankingHistory.map(h => ({
+        url_keyword_id: data.id,
+        month: h.month,
+        position: h.position
+      }));
+
+      const { error: historyError } = await supabase
+        .from('ranking_history')
+        .insert(historyRecords);
+
+      if (historyError) {
+        throw new Error(`Failed to add ranking history: ${historyError.message}`);
+      }
+    }
+
+    return fromDbUrlKeywordPair(data, pair.rankingHistory || []);
+  } catch (error) {
+    console.error('Error adding URL/keyword pair:', error);
+    throw error;
+  }
 };
 
 // Update an existing URL/keyword pair
 export const updateUrlKeywordPair = async (pair: UrlKeywordPair): Promise<UrlKeywordPair | null> => {
-  // Update the URL/keyword pair
-  const { data, error } = await supabase
-    .from('url_keyword_pairs')
-    .update(toDbUrlKeywordPair(pair))
-    .eq('id', pair.id)
-    .select()
-    .single();
+  try {
+    await ensureConnection();
+    
+    const dbPair = {
+      ...toDbUrlKeywordPair(pair),
+      id: pair.id
+    };
+    
+    const { data, error } = await supabase
+      .from('url_keyword_pairs')
+      .update(dbPair)
+      .eq('id', pair.id)
+      .select()
+      .single();
 
-  if (error) {
+    if (error) {
+      throw new Error(`Failed to update URL/keyword pair: ${error.message}`);
+    }
+
+    if (!data) {
+      throw new Error('No data returned from update operation');
+    }
+
+    return fromDbUrlKeywordPair(data, pair.rankingHistory || []);
+  } catch (error) {
     console.error('Error updating URL/keyword pair:', error);
-    return null;
+    throw error;
   }
-
-  return fromDbUrlKeywordPair(data, pair.rankingHistory || []);
 };
 
 // Delete a URL/keyword pair
 export const deleteUrlKeywordPair = async (id: string): Promise<boolean> => {
-  const { error } = await supabase
-    .from('url_keyword_pairs')
-    .delete()
-    .eq('id', id);
+  try {
+    await ensureConnection();
+    
+    const { error } = await supabase
+      .from('url_keyword_pairs')
+      .delete()
+      .eq('id', id);
 
-  if (error) {
+    if (error) {
+      throw new Error(`Failed to delete URL/keyword pair: ${error.message}`);
+    }
+
+    return true;
+  } catch (error) {
     console.error('Error deleting URL/keyword pair:', error);
-    return false;
+    throw error;
   }
-
-  return true;
 };
 
 // Add a new ranking history entry
 export const addRankingHistory = async (urlKeywordId: string, month: string, position: number): Promise<boolean> => {
-  // Insert or update the ranking history
-  const { error } = await supabase
-    .from('ranking_history')
-    .upsert({
-      id: uuidv4(),
-      url_keyword_id: urlKeywordId,
-      month,
-      position
-    }, {
-      onConflict: 'url_keyword_id,month'
-    });
+  try {
+    await ensureConnection();
+    
+    const { error } = await supabase
+      .from('ranking_history')
+      .upsert({
+        url_keyword_id: urlKeywordId,
+        month,
+        position
+      }, {
+        onConflict: 'url_keyword_id,month'
+      });
 
-  if (error) {
+    if (error) {
+      throw new Error(`Failed to add ranking history: ${error.message}`);
+    }
+
+    return true;
+  } catch (error) {
     console.error('Error adding ranking history:', error);
-    return false;
+    throw error;
   }
-
-  return true;
 };
 
 // Bulk add ranking history entries (for monthly updates)
 export const bulkAddRankingHistory = async (entries: { urlKeywordId: string, month: string, position: number }[]): Promise<boolean> => {
-  // Format the entries for insertion
-  const historyRecords = entries.map(entry => ({
-    id: uuidv4(),
-    url_keyword_id: entry.urlKeywordId,
-    month: entry.month,
-    position: entry.position
-  }));
+  try {
+    await ensureConnection();
+    
+    const historyRecords = entries.map(entry => ({
+      url_keyword_id: entry.urlKeywordId,
+      month: entry.month,
+      position: entry.position
+    }));
 
-  const { error } = await supabase
-    .from('ranking_history')
-    .upsert(historyRecords, {
-      onConflict: 'url_keyword_id,month'
-    });
+    const { error } = await supabase
+      .from('ranking_history')
+      .upsert(historyRecords, {
+        onConflict: 'url_keyword_id,month'
+      });
 
-  if (error) {
+    if (error) {
+      throw new Error(`Failed to bulk add ranking history: ${error.message}`);
+    }
+
+    return true;
+  } catch (error) {
     console.error('Error bulk adding ranking history:', error);
-    return false;
+    throw error;
   }
-
-  return true;
 };

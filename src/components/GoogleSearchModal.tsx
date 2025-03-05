@@ -30,23 +30,21 @@ const GoogleSearchModal: React.FC<GoogleSearchModalProps> = ({
       const response = await fetchGoogleRankings(urlKeywordPair.keyword, urlKeywordPair.url);
       setResults(response.results);
       
-      // Check if our URL was found in the results
       if (response.targetPosition) {
         setFoundPosition(response.targetPosition);
-        // Update the ranking in the parent component
         onUpdateRanking(urlKeywordPair.id, response.targetPosition);
       } else {
-        // If not found in the top 100 results
         setFoundPosition(null);
       }
     } catch (err) {
-      setError('Failed to fetch search results. Please check your API key and try again.');
+      const message = err instanceof Error ? err.message : 'Failed to fetch search results';
+      setError(message);
+      console.error('Error fetching rankings:', err);
     } finally {
       setIsLoading(false);
     }
   };
   
-  // Automatically search when the modal opens
   useEffect(() => {
     handleSearch();
   }, []);

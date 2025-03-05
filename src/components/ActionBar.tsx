@@ -9,13 +9,17 @@ interface ActionBarProps {
   onExport: () => void;
   onMonthlyUpdate: () => void;
   data: UrlKeywordPair[];
+  onAddUrl: (newPair: UrlKeywordPair) => void;
+  onImport: (data: UrlKeywordPair[]) => void;
 }
 
 const ActionBar: React.FC<ActionBarProps> = ({ 
   onRefresh,
   onExport,
   onMonthlyUpdate,
-  data
+  data,
+  onAddUrl,
+  onImport
 }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -79,7 +83,7 @@ const ActionBar: React.FC<ActionBarProps> = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-md">
             <AddUrlForm 
-              onAdd={() => setShowAddForm(false)}
+              onAdd={onAddUrl}
               onClose={() => setShowAddForm(false)}
             />
           </div>
@@ -90,7 +94,10 @@ const ActionBar: React.FC<ActionBarProps> = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="w-full max-w-md">
             <ImportModal
-              onImport={() => setShowImportModal(false)}
+              onImport={(data) => {
+                onImport(data);
+                setShowImportModal(false);
+              }}
               onClose={() => setShowImportModal(false)}
             />
           </div>

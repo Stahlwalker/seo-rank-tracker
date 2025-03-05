@@ -1,170 +1,137 @@
-import axios from 'axios';
 import { GoogleSearchResponse, GoogleSearchResult } from '../types';
 
-// SERP API integration for real Google search results
-// You'll need to sign up at https://serpapi.com/ to get an API key
+const SERP_API_KEY = import.meta.env.VITE_SERP_API_KEY;
 
-// Replace with your actual API key from SERP API
-const SERP_API_KEY = 'your_serpapi_key_here';
+// Validate API key on module load
+if (!SERP_API_KEY) {
+  throw new Error(
+    'SERP API key is not configured. Please add VITE_SERP_API_KEY to your .env file.'
+  );
+}
 
-export const fetchGoogleRankings = async (keyword: string, targetUrl: string): Promise<GoogleSearchResponse> => {
+export const fetchGoogleRankings = async (
+  keyword: string,
+  targetUrl: string
+): Promise<GoogleSearchResponse> => {
   try {
-    // Extract domain from URL for easier matching
-    const targetDomain = new URL(targetUrl).hostname;
+    // Extract domain and path from target URL for matching
+    const targetUrlObj = new URL(targetUrl);
+    const targetDomain = targetUrlObj.hostname;
+    const targetPath = targetUrlObj.pathname;
     
-    // For demo purposes, simulate the API call
-    // In production, uncomment the real API call below
-    
-    // Simulated response for development without API key
-    return simulateSearchResults(keyword, targetUrl, targetDomain);
-    
-    /* Real API call - uncomment and use in production
-    const response = await axios.get('https://serpapi.com/search', {
-      params: {
-        api_key: SERP_API_KEY,
-        q: keyword,
-        engine: 'google',
-        num: 100, // Get up to 100 results to find the target URL
-        gl: 'us', // Country (US by default, can be changed)
-        hl: 'en'  // Language
+    // Make the API call to SERP API with proper error handling
+    const response = await fetch(
+      `https://serpapi.com/search.json?q=${encodeURIComponent(keyword)}&api_key=${SERP_API_KEY}&num=100&gl=us&hl=en`,
+      {
+        headers: {
+          'Accept': 'application/json'
+        }
       }
-    });
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `SERP API request failed (${response.status}): ${errorText}`
+      );
+    }
+
+    const data = await response.json();
     
-    // Process the SERP API response
-    const organicResults = response.data.organic_results || [];
-    const results: GoogleSearchResult[] = [];
+    if (data.error) {
+      throw new Error(`SERP API error: ${data.error}`);
+    }
+    
+    if (!data.organic_results || !Array.isArray(data.organic_results)) {
+      throw new Error('Invalid SERP API response: No organic results found');
+    }
+
+    // Get all organic results
+    const organicResults = data.organic_results;
     let targetPosition: number | null = null;
-    
-    // Process each organic result
-    organicResults.forEach((result: any, index: number) => {
-      const position = index + 1;
-      const link = result.link;
-      
-      // Check if this result matches our target domain
-      const resultDomain = new URL(link).hostname;
-      const isTarget = resultDomain.includes(targetDomain) || targetDomain.includes(resultDomain);
-      
-      // If this is our target URL and we haven't found it yet, record the position
-      if (isTarget && targetPosition === null) {
-        targetPosition = position;
+
+    // Process first 10 results for display
+    const processedResults: GoogleSearchResult[] = organicResults
+      .slice(0, 10)
+      .map((result: any, index: number) => {
+        const position = index + 1;
+        
+        try {
+          const resultUrl = new URL(result.link);
+          const resultDomain = resultUrl.hostname;
+          const resultPath = resultUrl.pathname;
+          
+          // Check if this is our target URL by comparing both domain and path
+          if (!targetPosition && resultDomain === targetDomain) {
+            // For exact URL match, check if paths match (ignoring trailing slashes)
+            const normalizedTargetPath = targetPath.replace(/\/$/, '');
+            const normalizedResultPath = resultPath.replace(/\/$/, '');
+            
+            if (normalizedTargetPath === normalizedResultPath) {
+              targetPosition = position;
+            }
+          }
+          
+          return {
+            position,
+            title: result.title || '',
+            link: result.link,
+            snippet: result.snippet || ''
+          };
+        } catch (error) {
+          console.warn(`Invalid URL in SERP result: ${result.link}`);
+          return {
+            position,
+            title: result.title || '',
+            link: result.link || '',
+            snippet: result.snippet || ''
+          };
+        }
+      });
+
+    // If target URL wasn't in top 10, check remaining results
+    if (!targetPosition) {
+      for (let i = 10; i < organicResults.length; i++) {
+        try {
+          const result = organicResults[i];
+          const resultUrl = new URL(result.link);
+          const resultDomain = resultUrl.hostname;
+          const resultPath = resultUrl.pathname;
+          
+          if (resultDomain === targetDomain) {
+            // For exact URL match, check if paths match (ignoring trailing slashes)
+            const normalizedTargetPath = targetPath.replace(/\/$/, '');
+            const normalizedResultPath = resultPath.replace(/\/$/, '');
+            
+            if (normalizedTargetPath === normalizedResultPath) {
+              targetPosition = i + 1;
+              break;
+            }
+          }
+        } catch (error) {
+          console.warn(`Invalid URL in SERP result: ${organicResults[i].link}`);
+          continue;
+        }
       }
-      
-      // Only include the first 10 results in our display
-      if (position <= 10) {
-        results.push({
-          position,
-          title: result.title,
-          link: result.link,
-          snippet: result.snippet || ''
-        });
-      }
-    });
-    
+    }
+
     return {
       keyword,
-      results,
-      totalResults: response.data.search_information?.total_results || 0,
+      results: processedResults,
+      totalResults: data.search_information?.total_results || 0,
       targetPosition
     };
-    */
   } catch (error) {
-    console.error('Error fetching Google rankings from SERP API:', error);
-    throw new Error('Failed to fetch Google rankings. Please check your API key and try again.');
-  }
-};
-
-// Simulation function for development without API key
-const simulateSearchResults = (keyword: string, targetUrl: string, targetDomain: string): GoogleSearchResponse => {
-  // Determine if and where the target domain should appear
-  let targetPosition: number | null = null;
-  
-  // 80% chance the domain appears in the results
-  if (Math.random() < 0.8) {
-    // Position is weighted towards the top but can be anywhere in top 30
-    const weights = [
-      15, 12, 10, 8, 7, // Positions 1-5
-      6, 5, 5, 4, 4,    // Positions 6-10
-      3, 3, 3, 2, 2,    // Positions 11-15
-      2, 1, 1, 1, 1,    // Positions 16-20
-      1, 1, 1, 1, 1,    // Positions 21-25
-      1, 1, 1, 1, 1     // Positions 26-30
-    ];
+    // Enhance error message with more context
+    const message = error instanceof Error 
+      ? error.message 
+      : 'Unknown error occurred';
     
-    // Select a position based on weights
-    const totalWeight = weights.reduce((a, b) => a + b, 0);
-    let random = Math.random() * totalWeight;
+    console.error(`Error fetching SERP data for "${keyword}":`, message);
     
-    for (let i = 0; i < weights.length; i++) {
-      random -= weights[i];
-      if (random <= 0) {
-        targetPosition = i + 1;
-        break;
-      }
-    }
+    throw new Error(
+      `Failed to check ranking for "${keyword}": ${message}. ` +
+      'Please verify your API key and ensure you have sufficient credits.'
+    );
   }
-  
-  // Generate 10 search results
-  const results: GoogleSearchResult[] = [];
-  for (let i = 1; i <= 10; i++) {
-    const isTargetDomain = i === targetPosition;
-    
-    if (isTargetDomain) {
-      // This is our target domain
-      results.push({
-        position: i,
-        title: `${keyword.charAt(0).toUpperCase() + keyword.slice(1)} - ${targetDomain}`,
-        link: targetUrl + '/' + keyword.replace(/\s+/g, '-').toLowerCase(),
-        snippet: `Find the best information about ${keyword} on our website. We provide comprehensive guides, tips, and resources related to ${keyword} for all your needs.`
-      });
-    } else {
-      // Generate a random competitor result
-      const competitorDomain = generateRandomDomain(targetDomain);
-      results.push({
-        position: i,
-        title: generateRandomTitle(keyword, competitorDomain),
-        link: `https://${competitorDomain}/${keyword.replace(/\s+/g, '-').toLowerCase()}`,
-        snippet: generateRandomSnippet(keyword)
-      });
-    }
-  }
-  
-  return {
-    keyword,
-    results,
-    totalResults: 100 + Math.floor(Math.random() * 900),
-    targetPosition
-  };
-};
-
-// Helper function to generate a random domain name
-const generateRandomDomain = (excludeDomain: string): string => {
-  const topDomains = ['example.com', 'competitor.com', 'industry-leader.com', 'best-info.com', 'top-results.com'];
-  let domain;
-  
-  do {
-    domain = topDomains[Math.floor(Math.random() * topDomains.length)];
-  } while (domain.includes(excludeDomain));
-  
-  return domain;
-};
-
-// Helper function to generate a random title
-const generateRandomTitle = (keyword: string, domain: string): string => {
-  const prefixes = ['Ultimate Guide to', 'Everything About', 'Complete Resource for', 'Top 10', 'Best Practices for'];
-  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-  
-  return `${prefix} ${keyword} | ${domain}`;
-};
-
-// Helper function to generate a random snippet
-const generateRandomSnippet = (keyword: string): string => {
-  const snippets = [
-    `Discover everything you need to know about ${keyword}. Our comprehensive guide covers all aspects and provides expert insights.`,
-    `Looking for information on ${keyword}? We've compiled the most complete resource with tips, tricks, and best practices.`,
-    `${keyword.charAt(0).toUpperCase() + keyword.slice(1)} experts share their knowledge. Learn from the best and improve your understanding.`,
-    `The definitive guide to ${keyword}. We break down complex topics into easy-to-understand information.`,
-    `Explore our in-depth analysis of ${keyword}. Updated regularly with the latest information and research.`
-  ];
-  
-  return snippets[Math.floor(Math.random() * snippets.length)];
 };
