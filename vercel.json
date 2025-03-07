@@ -3,5 +3,23 @@
     "devCommand": "npm run dev",
     "installCommand": "npm install",
     "framework": "vite",
-    "outputDirectory": "dist"
+    "outputDirectory": "dist",
+    "version": 2,
+    "routes": [
+        {
+            "src": "/api/search",
+            "methods": [
+                "GET"
+            ],
+            "dest": "/api/search.ts"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/index.html"
+        }
+    ],
+    "env": {
+        "SERP_API_KEY": "@serp_api_key",
+        "VITE_SERP_API_KEY": "@serp_api_key"
+    }
 }

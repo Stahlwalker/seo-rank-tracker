@@ -1,5 +1,11 @@
 import { GoogleSearchResponse, GoogleSearchResult } from '../types';
 
+interface OrganicResult {
+  title?: string;
+  link: string;
+  snippet?: string;
+}
+
 const SERP_API_KEY = import.meta.env.VITE_SERP_API_KEY;
 
 // Validate API key on module load
@@ -18,10 +24,10 @@ export const fetchGoogleRankings = async (
     const targetUrlObj = new URL(targetUrl);
     const targetDomain = targetUrlObj.hostname;
     const targetPath = targetUrlObj.pathname;
-    
-    // Make the API call to SERP API with proper error handling
+
+    // Make the API call to our proxy endpoint
     const response = await fetch(
-      `https://serpapi.com/search.json?q=${encodeURIComponent(keyword)}&api_key=${SERP_API_KEY}&num=100&gl=us&hl=en`,
+      `/api/search?q=${encodeURIComponent(keyword)}&num=100`,
       {
         headers: {
           'Accept': 'application/json'
@@ -32,54 +38,54 @@ export const fetchGoogleRankings = async (
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(
-        `SERP API request failed (${response.status}): ${errorText}`
+        `Search request failed (${response.status}): ${errorText}`
       );
     }
 
     const data = await response.json();
-    
+
     if (data.error) {
-      throw new Error(`SERP API error: ${data.error}`);
+      throw new Error(`Search error: ${data.error}`);
     }
-    
+
     if (!data.organic_results || !Array.isArray(data.organic_results)) {
-      throw new Error('Invalid SERP API response: No organic results found');
+      throw new Error('Invalid response: No organic results found');
     }
 
     // Get all organic results
-    const organicResults = data.organic_results;
+    const organicResults = data.organic_results as OrganicResult[];
     let targetPosition: number | null = null;
 
     // Process first 10 results for display
     const processedResults: GoogleSearchResult[] = organicResults
       .slice(0, 10)
-      .map((result: any, index: number) => {
+      .map((result, index: number) => {
         const position = index + 1;
-        
+
         try {
           const resultUrl = new URL(result.link);
           const resultDomain = resultUrl.hostname;
           const resultPath = resultUrl.pathname;
-          
+
           // Check if this is our target URL by comparing both domain and path
           if (!targetPosition && resultDomain === targetDomain) {
             // For exact URL match, check if paths match (ignoring trailing slashes)
             const normalizedTargetPath = targetPath.replace(/\/$/, '');
             const normalizedResultPath = resultPath.replace(/\/$/, '');
-            
+
             if (normalizedTargetPath === normalizedResultPath) {
               targetPosition = position;
             }
           }
-          
+
           return {
             position,
             title: result.title || '',
             link: result.link,
             snippet: result.snippet || ''
           };
-        } catch (error) {
-          console.warn(`Invalid URL in SERP result: ${result.link}`);
+        } catch {
+          console.warn(`Invalid URL in search result: ${result.link}`);
           return {
             position,
             title: result.title || '',
@@ -97,19 +103,19 @@ export const fetchGoogleRankings = async (
           const resultUrl = new URL(result.link);
           const resultDomain = resultUrl.hostname;
           const resultPath = resultUrl.pathname;
-          
+
           if (resultDomain === targetDomain) {
             // For exact URL match, check if paths match (ignoring trailing slashes)
             const normalizedTargetPath = targetPath.replace(/\/$/, '');
             const normalizedResultPath = resultPath.replace(/\/$/, '');
-            
+
             if (normalizedTargetPath === normalizedResultPath) {
               targetPosition = i + 1;
               break;
             }
           }
-        } catch (error) {
-          console.warn(`Invalid URL in SERP result: ${organicResults[i].link}`);
+        } catch {
+          console.warn(`Invalid URL in search result: ${organicResults[i].link}`);
           continue;
         }
       }
@@ -123,15 +129,15 @@ export const fetchGoogleRankings = async (
     };
   } catch (error) {
     // Enhance error message with more context
-    const message = error instanceof Error 
-      ? error.message 
+    const message = error instanceof Error
+      ? error.message
       : 'Unknown error occurred';
-    
-    console.error(`Error fetching SERP data for "${keyword}":`, message);
-    
+
+    console.error(`Error fetching search data for "${keyword}":`, message);
+
     throw new Error(
       `Failed to check ranking for "${keyword}": ${message}. ` +
-      'Please verify your API key and ensure you have sufficient credits.'
+      'Please verify the service is working correctly.'
     );
   }
 };

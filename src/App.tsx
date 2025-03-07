@@ -1,94 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import Header from './components/Header';
-import ActionBar from './components/ActionBar';
+import { UrlKeywordPair } from './types';
+import { getAllUrlKeywordPairs, updateUrlKeywordPair } from './services/supabaseService';
 import RankingTable from './components/RankingTable';
 import RankingChart from './components/RankingChart';
-import { UrlKeywordPair, RankingData } from './types';
+import ActionBar from './components/ActionBar';
 import { generateMockData } from './utils/mockData';
-import {
-  getAllUrlKeywordPairs,
-  addUrlKeywordPair,
-  updateUrlKeywordPair,
-  deleteUrlKeywordPair,
-  bulkAddRankingHistory
-} from './services/supabaseService';
 
 function App() {
   const [data, setData] = useState<UrlKeywordPair[]>([]);
-  const [activeView, setActiveView] = useState<'table' | 'chart'>('table');
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [view] = useState<'table' | 'chart'>('table');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    loadDataFromSource();
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const pairs = await getAllUrlKeywordPairs();
+        setData(pairs.length > 0 ? pairs : generateMockData());
+      } catch (error) {
+        console.error('Error loading data:', error);
+        setError(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load data. Please try again.'
+        );
+        // Load mock data as fallback
+        setData(generateMockData());
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
-  const loadDataFromSource = async () => {
+  const handleRefreshRankings = async () => {
     setIsLoading(true);
-    setError(null);
-
-    try {
-      const supabaseData = await getAllUrlKeywordPairs();
-
-      if (supabaseData && supabaseData.length > 0) {
-        setData(supabaseData);
-      } else {
-        const mockData = generateMockData();
-        const savedData = await Promise.all(
-          mockData.map(pair => addUrlKeywordPair(pair))
-        );
-        const validData = savedData.filter((item): item is UrlKeywordPair => item !== null);
-        setData(validData);
-      }
-    } catch (error) {
-      console.error('Error loading data:', error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to load data. Please check your Supabase configuration.'
-      );
-      setData(generateMockData());
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAddUrl = async (newPair: UrlKeywordPair) => {
-    try {
-      const result = await addUrlKeywordPair(newPair);
-      if (result) {
-        setData(prevData => [...prevData, result]);
-      }
-    } catch (error) {
-      console.error('Error adding URL:', error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to add URL. Please try again.'
-      );
-    }
-  };
-
-  const handleImportUrls = async (importedData: UrlKeywordPair[]) => {
-    try {
-      setData(prevData => [...prevData, ...importedData]);
-    } catch (error) {
-      console.error('Error importing URLs:', error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to import URLs. Please try again.'
-      );
-    }
-  };
-
-  const handleRefresh = async () => {
     try {
       const updatedData = await Promise.all(
         data.map(async (item) => {
           try {
-            const response = await fetch(`https://serpapi.com/search?api_key=${import.meta.env.VITE_SERP_API_KEY}&q=${encodeURIComponent(item.keyword)}&engine=google&num=100`);
+            const response = await fetch(`/api/search?q=${encodeURIComponent(item.keyword)}`);
             const result = await response.json();
 
             const organicResults = result.organic_results || [];
@@ -130,6 +84,8 @@ function App() {
           ? error.message
           : 'Failed to refresh rankings. Please try again.'
       );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -160,97 +116,75 @@ function App() {
     document.body.removeChild(link);
   };
 
-  const handleMonthlyUpdate = async () => {
+  const handleAddUrl = async (newPair: UrlKeywordPair) => {
     try {
-      const currentMonth = format(new Date(), 'MMM yyyy');
-
-      const updatedData = data.map(item => {
-        const monthExists = item.rankingHistory.some(
-          history => history.month === currentMonth
-        );
-
-        if (monthExists || item.currentRanking === null) {
-          return item;
-        }
-
-        const newRankingData: RankingData = {
-          month: currentMonth,
-          position: item.currentRanking
-        };
-
-        return {
-          ...item,
-          rankingHistory: [...item.rankingHistory, newRankingData]
-        };
-      });
-
-      const results = await Promise.all(
-        updatedData.map(item => updateUrlKeywordPair(item))
-      );
-
-      const validData = results.filter((item): item is UrlKeywordPair => item !== null);
-
-      const historyEntries = validData
-        .filter(item => item.currentRanking !== null)
-        .filter(item => !item.rankingHistory.some(h => h.month === currentMonth))
-        .map(item => ({
-          urlKeywordId: item.id,
-          month: currentMonth,
-          position: item.currentRanking as number
-        }));
-
-      if (historyEntries.length > 0) {
-        await bulkAddRankingHistory(historyEntries);
-      }
-
-      setData(validData);
+      setData(prevData => [...prevData, newPair]);
     } catch (error) {
-      console.error('Error updating monthly rankings:', error);
+      console.error('Error adding URL:', error);
       setError(
         error instanceof Error
           ? error.message
-          : 'Failed to update monthly rankings. Please try again.'
+          : 'Failed to add URL. Please try again.'
       );
     }
   };
 
+  const handleImport = (importedData: UrlKeywordPair[]) => {
+    try {
+      setData(prevData => [...prevData, ...importedData]);
+    } catch (error) {
+      console.error('Error importing URLs:', error);
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to import URLs. Please try again.'
+      );
+    }
+  };
+
+  const handleMonthlyUpdate = async () => {
+    // Placeholder for monthly update functionality
+    console.log('Monthly update triggered');
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Header
-        activeView={activeView}
-        setActiveView={setActiveView}
-      />
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+          <h1 className="text-3xl font-bold text-gray-900">
+            SEO Rank Tracker
+          </h1>
+        </div>
+      </header>
 
-      <main className="container mx-auto px-4 py-4 sm:py-8 max-w-[95%] xl:max-w-[90%] 2xl:max-w-[85%]">
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
-            <p className="font-medium">Error</p>
-            <p>{error}</p>
+      <main>
+        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="px-4 py-6 sm:px-0">
+            <ActionBar
+              onRefresh={handleRefreshRankings}
+              onExport={handleExport}
+              onMonthlyUpdate={handleMonthlyUpdate}
+              data={data}
+              onAddUrl={handleAddUrl}
+              onImport={handleImport}
+            />
+
+            {error && (
+              <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                {error}
+              </div>
+            )}
+
+            {view === 'table' ? (
+              <RankingTable
+                data={data}
+                setData={setData}
+                isLoading={isLoading}
+              />
+            ) : (
+              <RankingChart data={data} />
+            )}
           </div>
-        )}
-
-        <div className="space-y-4">
-          <ActionBar
-            onRefresh={handleRefresh}
-            onExport={handleExport}
-            onMonthlyUpdate={handleMonthlyUpdate}
-            data={data}
-            onAddUrl={handleAddUrl}
-            onImport={handleImportUrls}
-          />
-
-          {activeView === 'table' ? (
-            <RankingTable
-              data={data}
-              setData={setData}
-              isLoading={isLoading}
-            />
-          ) : (
-            <RankingChart
-              data={data}
-              isLoading={isLoading}
-            />
-          )}
         </div>
       </main>
     </div>
