@@ -6,10 +6,10 @@ import RankingTable from './components/RankingTable';
 import RankingChart from './components/RankingChart';
 import { UrlKeywordPair, RankingData } from './types';
 import { generateMockData } from './utils/mockData';
-import { 
-  getAllUrlKeywordPairs, 
-  addUrlKeywordPair, 
-  updateUrlKeywordPair, 
+import {
+  getAllUrlKeywordPairs,
+  addUrlKeywordPair,
+  updateUrlKeywordPair,
   deleteUrlKeywordPair,
   bulkAddRankingHistory
 } from './services/supabaseService';
@@ -27,10 +27,10 @@ function App() {
   const loadDataFromSource = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const supabaseData = await getAllUrlKeywordPairs();
-      
+
       if (supabaseData && supabaseData.length > 0) {
         setData(supabaseData);
       } else {
@@ -44,8 +44,8 @@ function App() {
     } catch (error) {
       console.error('Error loading data:', error);
       setError(
-        error instanceof Error 
-          ? error.message 
+        error instanceof Error
+          ? error.message
           : 'Failed to load data. Please check your Supabase configuration.'
       );
       setData(generateMockData());
@@ -63,8 +63,8 @@ function App() {
     } catch (error) {
       console.error('Error adding URL:', error);
       setError(
-        error instanceof Error 
-          ? error.message 
+        error instanceof Error
+          ? error.message
           : 'Failed to add URL. Please try again.'
       );
     }
@@ -76,8 +76,8 @@ function App() {
     } catch (error) {
       console.error('Error importing URLs:', error);
       setError(
-        error instanceof Error 
-          ? error.message 
+        error instanceof Error
+          ? error.message
           : 'Failed to import URLs. Please try again.'
       );
     }
@@ -90,21 +90,21 @@ function App() {
           try {
             const response = await fetch(`https://serpapi.com/search?api_key=${import.meta.env.VITE_SERP_API_KEY}&q=${encodeURIComponent(item.keyword)}&engine=google&num=100`);
             const result = await response.json();
-            
+
             const organicResults = result.organic_results || [];
             const targetDomain = new URL(item.url).hostname;
             let position = null;
-            
+
             for (let i = 0; i < organicResults.length; i++) {
               const resultUrl = organicResults[i].link;
               const resultDomain = new URL(resultUrl).hostname;
-              
+
               if (resultDomain.includes(targetDomain) || targetDomain.includes(resultDomain)) {
                 position = i + 1;
                 break;
               }
             }
-            
+
             return {
               ...item,
               currentRanking: position,
@@ -116,18 +116,18 @@ function App() {
           }
         })
       );
-      
+
       const results = await Promise.all(
         updatedData.map(item => updateUrlKeywordPair(item))
       );
-      
+
       const validData = results.filter((item): item is UrlKeywordPair => item !== null);
       setData(validData);
     } catch (error) {
       console.error('Error refreshing rankings:', error);
       setError(
-        error instanceof Error 
-          ? error.message 
+        error instanceof Error
+          ? error.message
           : 'Failed to refresh rankings. Please try again.'
       );
     }
@@ -136,7 +136,7 @@ function App() {
   const handleExport = () => {
     const headers = ['url', 'keyword', 'monthlySearchVolume', 'currentRanking', 'status', 'note'];
     const csvRows = [headers.join(',')];
-    
+
     data.forEach(item => {
       const row = [
         `"${item.url}"`,
@@ -148,7 +148,7 @@ function App() {
       ];
       csvRows.push(row.join(','));
     });
-    
+
     const csvContent = csvRows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -163,33 +163,33 @@ function App() {
   const handleMonthlyUpdate = async () => {
     try {
       const currentMonth = format(new Date(), 'MMM yyyy');
-      
+
       const updatedData = data.map(item => {
         const monthExists = item.rankingHistory.some(
           history => history.month === currentMonth
         );
-        
+
         if (monthExists || item.currentRanking === null) {
           return item;
         }
-        
+
         const newRankingData: RankingData = {
           month: currentMonth,
           position: item.currentRanking
         };
-        
+
         return {
           ...item,
           rankingHistory: [...item.rankingHistory, newRankingData]
         };
       });
-      
+
       const results = await Promise.all(
         updatedData.map(item => updateUrlKeywordPair(item))
       );
-      
+
       const validData = results.filter((item): item is UrlKeywordPair => item !== null);
-      
+
       const historyEntries = validData
         .filter(item => item.currentRanking !== null)
         .filter(item => !item.rankingHistory.some(h => h.month === currentMonth))
@@ -198,17 +198,17 @@ function App() {
           month: currentMonth,
           position: item.currentRanking as number
         }));
-      
+
       if (historyEntries.length > 0) {
         await bulkAddRankingHistory(historyEntries);
       }
-      
+
       setData(validData);
     } catch (error) {
       console.error('Error updating monthly rankings:', error);
       setError(
-        error instanceof Error 
-          ? error.message 
+        error instanceof Error
+          ? error.message
           : 'Failed to update monthly rankings. Please try again.'
       );
     }
@@ -216,40 +216,42 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Header 
-        activeView={activeView} 
-        setActiveView={setActiveView} 
+      <Header
+        activeView={activeView}
+        setActiveView={setActiveView}
       />
-      
-      <main className="container mx-auto px-4 py-8">
+
+      <main className="container mx-auto px-4 py-4 sm:py-8 max-w-[95%] xl:max-w-[90%] 2xl:max-w-[85%]">
         {error && (
           <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
             <p className="font-medium">Error</p>
             <p>{error}</p>
           </div>
         )}
-        
-        <ActionBar 
-          onRefresh={handleRefresh}
-          onExport={handleExport}
-          onMonthlyUpdate={handleMonthlyUpdate}
-          data={data}
-          onAddUrl={handleAddUrl}
-          onImport={handleImportUrls}
-        />
-        
-        {activeView === 'table' ? (
-          <RankingTable 
+
+        <div className="space-y-4">
+          <ActionBar
+            onRefresh={handleRefresh}
+            onExport={handleExport}
+            onMonthlyUpdate={handleMonthlyUpdate}
             data={data}
-            setData={setData}
-            isLoading={isLoading}
+            onAddUrl={handleAddUrl}
+            onImport={handleImportUrls}
           />
-        ) : (
-          <RankingChart 
-            data={data}
-            isLoading={isLoading}
-          />
-        )}
+
+          {activeView === 'table' ? (
+            <RankingTable
+              data={data}
+              setData={setData}
+              isLoading={isLoading}
+            />
+          ) : (
+            <RankingChart
+              data={data}
+              isLoading={isLoading}
+            />
+          )}
+        </div>
       </main>
     </div>
   );

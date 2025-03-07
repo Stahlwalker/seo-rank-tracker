@@ -23,11 +23,11 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
   const { register, handleSubmit, formState: { errors }, reset } = useForm<FormValues>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     setError(null);
-    
+
     try {
       const newPair: Omit<UrlKeywordPair, 'id'> = {
         url: data.url,
@@ -39,7 +39,7 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
         status: data.status || undefined,
         lastUpdated: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
       };
-      
+
       const result = await addUrlKeywordPair(newPair as UrlKeywordPair);
       if (result) {
         onAdd(result);
@@ -55,13 +55,13 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
       setIsSubmitting(false);
     }
   };
-  
+
   return (
     <div className="bg-white rounded-lg shadow-lg flex flex-col max-h-[90vh]">
       <div className="p-6 border-b border-gray-200">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-800">Add New URL</h2>
-          <button 
+          <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
           >
@@ -69,14 +69,14 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
           </button>
         </div>
       </div>
-      
+
       <div className="p-6 overflow-y-auto flex-1">
         {error && (
           <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm">
             {error}
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="mb-4">
             <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-1">
@@ -87,7 +87,7 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
               type="text"
               className={`w-full px-3 py-2 border rounded-md ${errors.url ? 'border-red-500' : 'border-gray-300'}`}
               placeholder="https://example.com/page"
-              {...register('url', { 
+              {...register('url', {
                 required: 'URL is required',
                 pattern: {
                   value: /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/,
@@ -99,7 +99,7 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
               <p className="mt-1 text-sm text-red-600">{errors.url.message}</p>
             )}
           </div>
-          
+
           <div className="mb-4">
             <label htmlFor="keyword" className="block text-sm font-medium text-gray-700 mb-1">
               Keyword
@@ -115,7 +115,7 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
               <p className="mt-1 text-sm text-red-600">{errors.keyword.message}</p>
             )}
           </div>
-          
+
           <div className="mb-4">
             <label htmlFor="monthlySearchVolume" className="block text-sm font-medium text-gray-700 mb-1">
               Monthly Search Volume (optional)
@@ -129,7 +129,7 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
               {...register('monthlySearchVolume')}
             />
           </div>
-          
+
           <div className="mb-4">
             <label htmlFor="currentRanking" className="block text-sm font-medium text-gray-700 mb-1">
               Current Ranking (optional)
@@ -143,7 +143,7 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
               {...register('currentRanking')}
             />
           </div>
-          
+
           <div className="mb-4">
             <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
               Status (optional)
@@ -158,7 +158,7 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
               <option value="Needs Improvement">Needs Improvement</option>
             </select>
           </div>
-          
+
           <div className="mb-4">
             <label htmlFor="note" className="block text-sm font-medium text-gray-700 mb-1">
               Note (optional)
@@ -173,7 +173,7 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
           </div>
         </form>
       </div>
-      
+
       <div className="p-6 border-t border-gray-200 bg-gray-50">
         <div className="flex justify-end">
           <button
@@ -187,9 +187,8 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
           <button
             onClick={handleSubmit(onSubmit)}
             disabled={isSubmitting}
-            className={`px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center ${
-              isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
-            }`}
+            className={`px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
           >
             {isSubmitting ? (
               <>

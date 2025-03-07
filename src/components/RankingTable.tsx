@@ -39,13 +39,13 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
     const months = [];
     const startDate = new Date(2023, 7); // August 2023 (0-indexed month)
     const currentDate = new Date();
-    
+
     let currentMonth = startDate;
     while (currentMonth <= currentDate) {
       months.push(format(currentMonth, 'MMM yyyy'));
       currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1);
     }
-    
+
     return months;
   };
 
@@ -77,9 +77,9 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
 
       const updatedItem = { ...item, note };
       const result = await updateUrlKeywordPair(updatedItem);
-      
+
       if (result) {
-        setData(prevData => prevData.map(item => 
+        setData(prevData => prevData.map(item =>
           item.id === id ? result : item
         ));
       }
@@ -96,9 +96,9 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
 
       const updatedItem = { ...item, status };
       const result = await updateUrlKeywordPair(updatedItem);
-      
+
       if (result) {
-        setData(prevData => prevData.map(item => 
+        setData(prevData => prevData.map(item =>
           item.id === id ? result : item
         ));
       }
@@ -112,16 +112,18 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
     columnHelper.accessor('url', {
       header: 'URL',
       cell: info => (
-        <div className="flex items-center">
-          <a 
-            href={info.getValue()} 
-            target="_blank" 
+        <div className="flex items-center max-w-full">
+          <a
+            href={info.getValue()}
+            target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 hover:text-blue-800 hover:underline flex items-center"
+            className="text-blue-600 hover:text-blue-800 hover:underline flex items-center truncate"
           >
-            {info.getValue().replace(/^https?:\/\//, '').substring(0, 30)}
-            {info.getValue().replace(/^https?:\/\//, '').length > 30 ? '...' : ''}
-            <ExternalLink className="h-3 w-3 ml-1" />
+            <span className="truncate">
+              {info.getValue().replace(/^https?:\/\//, '').substring(0, 30)}
+              {info.getValue().replace(/^https?:\/\//, '').length > 30 ? '...' : ''}
+            </span>
+            <ExternalLink className="h-3 w-3 ml-1 flex-shrink-0" />
           </a>
         </div>
       ),
@@ -143,7 +145,7 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
         );
       },
     }),
-    ...monthColumns.map(month => 
+    ...monthColumns.map(month =>
       columnHelper.accessor(row => {
         const historyItem = row.rankingHistory.find(h => h.month === month);
         return historyItem ? historyItem.position : null;
@@ -153,11 +155,10 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
         cell: info => {
           const value = info.getValue();
           return value !== null ? (
-            <span className={`font-medium ${
-              value <= 10 ? 'text-green-600' : 
-              value <= 20 ? 'text-yellow-600' : 
-              'text-red-600'
-            }`}>
+            <span className={`font-medium ${value <= 10 ? 'text-green-600' :
+              value <= 20 ? 'text-yellow-600' :
+                'text-red-600'
+              }`}>
               {value}
             </span>
           ) : (
@@ -176,21 +177,20 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
       cell: info => {
         const value = info.getValue();
         const lastUpdated = info.row.original.lastUpdated;
-        
+
         return (
           <div className="flex items-center">
             {value !== null ? (
-              <span className={`font-medium ${
-                value <= 10 ? 'text-green-600' : 
-                value <= 20 ? 'text-yellow-600' : 
-                'text-red-600'
-              }`}>
+              <span className={`font-medium ${value <= 10 ? 'text-green-600' :
+                value <= 20 ? 'text-yellow-600' :
+                  'text-red-600'
+                }`}>
                 {value}
               </span>
             ) : (
               <span className="text-gray-400">-</span>
             )}
-            
+
             {lastUpdated && (
               <span className="ml-2 text-xs text-gray-400" title={`Last updated: ${lastUpdated}`}>
                 {format(new Date(lastUpdated), 'MM/dd/yy')}
@@ -204,28 +204,27 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
       header: 'Status',
       cell: info => {
         const value = info.getValue();
-        
+
         return (
           <div className="flex items-center">
             <select
               value={value || ''}
               onChange={(e) => handleUpdateStatus(
-                info.row.original.id, 
+                info.row.original.id,
                 e.target.value as 'Testing' | 'Needs Improvement' | ''
               )}
-              className={`px-2 py-1 text-sm rounded-md border ${
-                value === 'Testing' 
-                  ? 'bg-blue-50 text-blue-700 border-blue-200' 
-                  : value === 'Needs Improvement'
-                    ? 'bg-amber-50 text-amber-700 border-amber-200'
-                    : 'bg-gray-50 text-gray-700 border-gray-200'
-              }`}
+              className={`px-2 py-1 text-sm rounded-md border ${value === 'Testing'
+                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                : value === 'Needs Improvement'
+                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                  : 'bg-gray-50 text-gray-700 border-gray-200'
+                }`}
             >
               <option value="">None</option>
               <option value="Testing">Testing</option>
               <option value="Needs Improvement">Needs Improvement</option>
             </select>
-            
+
             {value && (
               <div className="ml-2">
                 {value === 'Testing' && <CheckCircle2 className="h-4 w-4 text-blue-600" />}
@@ -241,7 +240,7 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
       cell: info => {
         const id = info.row.original.id;
         const value = info.getValue();
-        
+
         if (editingNoteId === id) {
           return (
             <div className="flex items-center">
@@ -275,7 +274,7 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
             </div>
           );
         }
-        
+
         return (
           <div className="flex items-center justify-between group">
             <div className="flex-1 truncate">
@@ -308,11 +307,10 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
           <button
             onClick={() => handleDelete(info.row.original.id)}
             disabled={isDeleting}
-            className={`p-1 rounded ${
-              isDeleting 
-                ? 'text-gray-400 cursor-not-allowed' 
-                : 'text-red-500 hover:text-red-700 hover:bg-red-50'
-            }`}
+            className={`p-1 rounded ${isDeleting
+              ? 'text-gray-400 cursor-not-allowed'
+              : 'text-red-500 hover:text-red-700 hover:bg-red-50'
+              }`}
             title="Delete"
           >
             <Trash2 className={`h-4 w-4 ${isDeleting ? 'animate-pulse' : ''}`} />
@@ -325,38 +323,38 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
   // Custom filter function for global search
   const globalFilterFn: FilterFn<UrlKeywordPair> = (row, columnId, value) => {
     const searchValue = value.toLowerCase();
-    
+
     // Search in URL
     if (row.original.url.toLowerCase().includes(searchValue)) return true;
-    
+
     // Search in keyword
     if (row.original.keyword.toLowerCase().includes(searchValue)) return true;
-    
+
     // Search in note
     if (row.original.note && row.original.note.toLowerCase().includes(searchValue)) return true;
-    
+
     // Search in status
     if (row.original.status && row.original.status.toLowerCase().includes(searchValue)) return true;
-    
+
     return false;
   };
 
   // Custom filter function for ranking filters
   const rankingFilterFn: FilterFn<UrlKeywordPair> = (row, columnId, filterValue) => {
     if (activeFilters.length === 0) return true;
-    
+
     const currentRanking = row.original.currentRanking;
-    
+
     if (currentRanking === null) return false;
-    
+
     if (activeFilters.includes('top10') && currentRanking <= 10) return true;
     if (activeFilters.includes('top20') && currentRanking > 10 && currentRanking <= 20) return true;
     if (activeFilters.includes('top30') && currentRanking > 20 && currentRanking <= 30) return true;
     if (activeFilters.includes('below30') && currentRanking > 30) return true;
-    
+
     return false;
   };
-  
+
   const table = useReactTable({
     data,
     columns,
@@ -385,9 +383,9 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
 
   // Toggle a filter
   const toggleFilter = (filter: string) => {
-    setActiveFilters(prev => 
-      prev.includes(filter) 
-        ? prev.filter(f => f !== filter) 
+    setActiveFilters(prev =>
+      prev.includes(filter)
+        ? prev.filter(f => f !== filter)
         : [...prev, filter]
     );
   };
@@ -416,48 +414,44 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
   return (
     <div>
       <div className="bg-white p-4 border-b border-gray-200">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
-          <div className="flex flex-wrap gap-2 mb-2 md:mb-0">
+        <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between sm:items-center">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => toggleFilter('top10')}
-              className={`px-3 py-1 text-sm rounded-md flex items-center ${
-                activeFilters.includes('top10')
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top10')
+                ? 'bg-green-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               <Filter className="h-3 w-3 mr-1" />
               Top 10
             </button>
             <button
               onClick={() => toggleFilter('top20')}
-              className={`px-3 py-1 text-sm rounded-md flex items-center ${
-                activeFilters.includes('top20')
-                  ? 'bg-yellow-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top20')
+                ? 'bg-yellow-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               <Filter className="h-3 w-3 mr-1" />
               11-20
             </button>
             <button
               onClick={() => toggleFilter('top30')}
-              className={`px-3 py-1 text-sm rounded-md flex items-center ${
-                activeFilters.includes('top30')
-                  ? 'bg-red-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top30')
+                ? 'bg-red-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               <Filter className="h-3 w-3 mr-1" />
               21-30
             </button>
             <button
               onClick={() => toggleFilter('below30')}
-              className={`px-3 py-1 text-sm rounded-md flex items-center ${
-                activeFilters.includes('below30')
-                  ? 'bg-gray-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('below30')
+                ? 'bg-gray-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               <Filter className="h-3 w-3 mr-1" />
               Below 30
@@ -472,7 +466,7 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
               </button>
             )}
           </div>
-          <div className="relative w-full md:w-64">
+          <div className="relative w-full sm:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-400" />
             </div>
@@ -486,61 +480,69 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
           </div>
         </div>
       </div>
-      
+
       {error && (
         <div className="m-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
           <p className="font-medium">Error</p>
           <p>{error}</p>
         </div>
       )}
-      
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              {table.getFlatHeaders().map(header => (
-                <th 
-                  key={header.id} 
-                  scope="col" 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  {header.isPlaceholder ? null : (
-                    <div
-                      className={header.column.getCanSort() ? 'cursor-pointer select-none flex items-center' : ''}
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                      {header.column.getCanSort() && (
-                        <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
-                      )}
-                    </div>
-                  )}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {table.getRowModel().rows.length > 0 ? (
-              table.getRowModel().rows.map(row => (
-                <tr key={row.id} className="hover:bg-gray-50">
-                  {row.getVisibleCells().map(cell => (
-                    <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            ) : (
+
+      <div className="overflow-x-auto shadow-sm">
+        <div className="inline-block min-w-full align-middle">
+          <table className="min-w-full divide-y divide-gray-200 table-fixed">
+            <thead className="bg-gray-50">
               <tr>
-                <td colSpan={table.getAllColumns().length} className="px-6 py-4 text-center text-sm text-gray-500">
-                  {searchTerm || activeFilters.length > 0 ? 'No results match your search criteria' : 'No data available'}
-                </td>
+                {table.getFlatHeaders().map(header => (
+                  <th
+                    key={header.id}
+                    scope="col"
+                    className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky top-0 bg-gray-50"
+                    style={{ minWidth: header.id === 'url' ? '200px' : header.id === 'keyword' ? '150px' : 'auto' }}
+                  >
+                    {header.isPlaceholder ? null : (
+                      <div
+                        className={header.column.getCanSort() ? 'cursor-pointer select-none flex items-center' : ''}
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getCanSort() && (
+                          <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
+                        )}
+                      </div>
+                    )}
+                  </th>
+                ))}
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {table.getRowModel().rows.length > 0 ? (
+                table.getRowModel().rows.map(row => (
+                  <tr key={row.id} className="hover:bg-gray-50">
+                    {row.getVisibleCells().map(cell => (
+                      <td
+                        key={cell.id}
+                        className="px-3 sm:px-6 py-2 text-sm text-gray-500 truncate"
+                      >
+                        <div className="truncate">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={table.getAllColumns().length} className="px-3 sm:px-6 py-4 text-center text-sm text-gray-500">
+                    {searchTerm || activeFilters.length > 0 ? 'No results match your search criteria' : 'No data available'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-      
+
       {selectedPair && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <GoogleSearchModal
@@ -548,7 +550,7 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading })
             onClose={() => setSelectedPair(null)}
             onUpdateRanking={(id, ranking) => {
               setData(prevData => prevData.map(item =>
-                item.id === id 
+                item.id === id
                   ? { ...item, currentRanking: ranking, lastUpdated: format(new Date(), 'yyyy-MM-dd HH:mm:ss') }
                   : item
               ));
