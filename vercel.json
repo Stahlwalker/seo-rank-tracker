@@ -15,6 +15,9 @@
             "maxDuration": 60
         }
     },
+    "build": {
+        "cache": "false"
+    },
     "headers": [
         {
             "source": "/api/(.*)",
