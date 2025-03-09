@@ -1,9 +1,11 @@
 import { supabase, testConnection } from '../lib/supabase';
 import { UrlKeywordPair, RankingData } from '../types';
+import { Database } from '../types/supabase';
 
 // Convert from app model to database model
 const toDbUrlKeywordPair = (pair: Partial<UrlKeywordPair>) => {
-  const { id, rankingHistory, ...rest } = pair;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { rankingHistory, ...rest } = pair;
   return {
     url: rest.url,
     keyword: rest.keyword,
@@ -16,7 +18,7 @@ const toDbUrlKeywordPair = (pair: Partial<UrlKeywordPair>) => {
 };
 
 // Convert from database model to app model
-const fromDbUrlKeywordPair = (dbPair: any, rankingHistory: RankingData[] = []): UrlKeywordPair => {
+const fromDbUrlKeywordPair = (dbPair: Database['public']['Tables']['url_keyword_pairs']['Row'], rankingHistory: RankingData[] = []): UrlKeywordPair => {
   return {
     id: dbPair.id,
     url: dbPair.url,
@@ -26,7 +28,7 @@ const fromDbUrlKeywordPair = (dbPair: any, rankingHistory: RankingData[] = []): 
     rankingHistory,
     note: dbPair.note || undefined,
     status: dbPair.status as 'Testing' | 'Needs Improvement' | '' || undefined,
-    lastUpdated: dbPair.last_updated
+    lastUpdated: dbPair.last_updated || undefined
   };
 };
 
@@ -47,7 +49,7 @@ const ensureConnection = async () => {
 export const getAllUrlKeywordPairs = async (): Promise<UrlKeywordPair[]> => {
   try {
     await ensureConnection();
-    
+
     // Get all URL/keyword pairs
     const { data: pairs, error: pairsError } = await supabase
       .from('url_keyword_pairs')
@@ -79,7 +81,7 @@ export const getAllUrlKeywordPairs = async (): Promise<UrlKeywordPair[]> => {
           .filter(h => h.url_keyword_id === pair.id)
           .map(h => ({ month: h.month, position: h.position }))
         : [];
-      
+
       return fromDbUrlKeywordPair(pair, pairHistory);
     });
   } catch (error) {
@@ -92,10 +94,53 @@ export const getAllUrlKeywordPairs = async (): Promise<UrlKeywordPair[]> => {
 export const addUrlKeywordPair = async (pair: Partial<UrlKeywordPair>): Promise<UrlKeywordPair | null> => {
   try {
     await ensureConnection();
-    
+
     const dbPair = toDbUrlKeywordPair(pair);
-    
-    // Insert the URL/keyword pair
+
+    // Check if the URL/keyword pair already exists
+    const { data: existingPairs, error: checkError } = await supabase
+      .from('url_keyword_pairs')
+      .select('*')
+      .eq('url', dbPair.url)
+      .eq('keyword', dbPair.keyword);
+
+    if (checkError) {
+      throw new Error(`Failed to check for existing URL/keyword pair: ${checkError.message}`);
+    }
+
+    // If we found existing pairs with the same URL and keyword
+    if (existingPairs && existingPairs.length > 0) {
+      // If there are duplicates, keep only the most recent one and delete others
+      if (existingPairs.length > 1) {
+        // Sort by created_at in descending order
+        const sortedPairs = existingPairs.sort((a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+
+        // Keep the most recent one
+        const mostRecent = sortedPairs[0];
+
+        // Delete all others
+        const idsToDelete = sortedPairs.slice(1).map(p => p.id);
+        if (idsToDelete.length > 0) {
+          const { error: deleteError } = await supabase
+            .from('url_keyword_pairs')
+            .delete()
+            .in('id', idsToDelete);
+
+          if (deleteError) {
+            console.error('Error cleaning up duplicate entries:', deleteError);
+          }
+        }
+
+        return fromDbUrlKeywordPair(mostRecent, []);
+      }
+
+      // If there's exactly one existing pair, return it
+      return fromDbUrlKeywordPair(existingPairs[0], []);
+    }
+
+    // If no existing pair was found, insert the new one
     const { data, error } = await supabase
       .from('url_keyword_pairs')
       .insert(dbPair)
@@ -138,12 +183,12 @@ export const addUrlKeywordPair = async (pair: Partial<UrlKeywordPair>): Promise<
 export const updateUrlKeywordPair = async (pair: UrlKeywordPair): Promise<UrlKeywordPair | null> => {
   try {
     await ensureConnection();
-    
+
     const dbPair = {
       ...toDbUrlKeywordPair(pair),
       id: pair.id
     };
-    
+
     const { data, error } = await supabase
       .from('url_keyword_pairs')
       .update(dbPair)
@@ -170,7 +215,7 @@ export const updateUrlKeywordPair = async (pair: UrlKeywordPair): Promise<UrlKey
 export const deleteUrlKeywordPair = async (id: string): Promise<boolean> => {
   try {
     await ensureConnection();
-    
+
     const { error } = await supabase
       .from('url_keyword_pairs')
       .delete()
@@ -191,7 +236,7 @@ export const deleteUrlKeywordPair = async (id: string): Promise<boolean> => {
 export const addRankingHistory = async (urlKeywordId: string, month: string, position: number): Promise<boolean> => {
   try {
     await ensureConnection();
-    
+
     const { error } = await supabase
       .from('ranking_history')
       .upsert({
@@ -217,7 +262,7 @@ export const addRankingHistory = async (urlKeywordId: string, month: string, pos
 export const bulkAddRankingHistory = async (entries: { urlKeywordId: string, month: string, position: number }[]): Promise<boolean> => {
   try {
     await ensureConnection();
-    
+
     const historyRecords = entries.map(entry => ({
       url_keyword_id: entry.urlKeywordId,
       month: entry.month,

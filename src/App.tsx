@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { UrlKeywordPair } from './types';
-import { getAllUrlKeywordPairs, updateUrlKeywordPair } from './services/supabaseService';
+import { getAllUrlKeywordPairs, updateUrlKeywordPair, addUrlKeywordPair } from './services/supabaseService';
 import RankingTable from './components/RankingTable';
 import RankingChart from './components/RankingChart';
 import ActionBar from './components/ActionBar';
@@ -118,7 +118,12 @@ function App() {
 
   const handleAddUrl = async (newPair: UrlKeywordPair) => {
     try {
-      setData(prevData => [...prevData, newPair]);
+      const addedPair = await addUrlKeywordPair(newPair);
+      if (addedPair) {
+        setData(prevData => [...prevData, addedPair]);
+      } else {
+        throw new Error('Failed to add URL to database');
+      }
     } catch (error) {
       console.error('Error adding URL:', error);
       setError(
@@ -129,9 +134,13 @@ function App() {
     }
   };
 
-  const handleImport = (importedData: UrlKeywordPair[]) => {
+  const handleImport = async (importedData: UrlKeywordPair[]) => {
     try {
-      setData(prevData => [...prevData, ...importedData]);
+      const addedPairs = await Promise.all(
+        importedData.map(pair => addUrlKeywordPair(pair))
+      );
+      const validPairs = addedPairs.filter((pair): pair is UrlKeywordPair => pair !== null);
+      setData(prevData => [...prevData, ...validPairs]);
     } catch (error) {
       console.error('Error importing URLs:', error);
       setError(
