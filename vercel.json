@@ -5,13 +5,19 @@
     "framework": "vite",
     "outputDirectory": "dist",
     "version": 2,
+    "functions": {
+        "api/*.ts": {
+            "memory": 1024,
+            "maxDuration": 10
+        }
+    },
     "routes": [
         {
-            "src": "/api/search",
-            "methods": [
-                "GET"
-            ],
-            "dest": "/api/search.ts"
+            "src": "/api/(.*)",
+            "dest": "/api/$1"
+        },
+        {
+            "handle": "filesystem"
         },
         {
             "src": "/(.*)",
@@ -20,6 +26,8 @@
     ],
     "env": {
         "SERP_API_KEY": "@serp_api_key",
-        "VITE_SERP_API_KEY": "@serp_api_key"
+        "VITE_SERP_API_KEY": "@serp_api_key",
+        "VITE_SUPABASE_URL": "@supabase_url",
+        "VITE_SUPABASE_ANON_KEY": "@supabase_anon_key"
     }
 }
