@@ -14,6 +14,7 @@ import { Line } from 'react-chartjs-2';
 import { UrlKeywordPair } from '../types';
 import { format } from 'date-fns';
 import { Search, ArrowUpDown, Check, Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { useOutletContext } from 'react-router-dom';
 
 ChartJS.register(
   CategoryScale,
@@ -25,11 +26,14 @@ ChartJS.register(
   Legend
 );
 
-interface RankingChartProps {
+interface RouteContext {
   data: UrlKeywordPair[];
+  setData: React.Dispatch<React.SetStateAction<UrlKeywordPair[]>>;
+  isLoading: boolean;
 }
 
-const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
+const RankingChart: React.FC = () => {
+  const { data } = useOutletContext<RouteContext>();
   const [selectedUrls, setSelectedUrls] = useState<string[]>(
     data.length > 0 ? [data[0].id] : []
   );
@@ -43,7 +47,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
     if (data.length > 0 && selectedUrls.length === 0) {
       setSelectedUrls([data[0].id]);
     }
-    
+
     // Remove any selected URLs that no longer exist in the data
     setSelectedUrls(prev => prev.filter(id => data.some(item => item.id === id)));
   }, [data]);
@@ -53,13 +57,13 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
     const months = [];
     const startDate = new Date(2023, 7); // August 2023 (0-indexed month)
     const currentDate = new Date();
-    
+
     let currentMonth = startDate;
     while (currentMonth <= currentDate) {
       months.push(format(currentMonth, 'MMM yyyy'));
       currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1);
     }
-    
+
     return months;
   };
 
@@ -80,7 +84,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
       'rgb(255, 99, 132)',
       'rgb(75, 192, 192)'
     ];
-    
+
     return colorPalette[index % colorPalette.length];
   };
 
@@ -91,13 +95,13 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
       .filter(item => selectedUrls.includes(item.id))
       .map((item, index) => {
         const color = getRandomColor(index);
-        
+
         // Map the data to match the months array
         const dataPoints = months.map(month => {
           const historyItem = item.rankingHistory.find(h => h.month === month);
           return historyItem ? historyItem.position : null;
         });
-        
+
         return {
           label: `${item.url.replace(/^https?:\/\//, '').substring(0, 30)}${item.url.replace(/^https?:\/\//, '').length > 30 ? '...' : ''} (${item.keyword})`,
           data: dataPoints,
@@ -121,7 +125,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
           text: 'Ranking Position',
         },
         ticks: {
-          callback: function(value) {
+          callback: function (value) {
             return value === 0 ? '' : value;
           }
         }
@@ -158,7 +162,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
   };
 
   const toggleUrlSelection = (id: string) => {
-    setSelectedUrls(prev => 
+    setSelectedUrls(prev =>
       prev.includes(id)
         ? prev.filter(urlId => urlId !== id)
         : [...prev, id]
@@ -177,7 +181,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
 
   const sortedData = [...filteredData].sort((a, b) => {
     let comparison = 0;
-    
+
     if (sortBy === 'url') {
       comparison = a.url.localeCompare(b.url);
     } else if (sortBy === 'keyword') {
@@ -187,7 +191,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
       const volumeB = b.monthlySearchVolume || 0;
       comparison = volumeA - volumeB;
     }
-    
+
     return sortDirection === 'asc' ? comparison : -comparison;
   });
 
@@ -205,7 +209,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
       <div className={`transition-all duration-300 ${showSelectionPanel ? 'mb-6' : 'mb-2'}`}>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium text-gray-700">URL Selection</h3>
-          <button 
+          <button
             onClick={() => setShowSelectionPanel(!showSelectionPanel)}
             className="flex items-center text-sm text-blue-600 hover:text-blue-800"
           >
@@ -222,7 +226,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
             )}
           </button>
         </div>
-        
+
         {showSelectionPanel && (
           <>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
@@ -256,13 +260,13 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
                 />
               </div>
             </div>
-            
+
             <div className="overflow-hidden border border-gray-200 rounded-lg mb-4">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <button 
+                      <button
                         className="flex items-center focus:outline-none"
                         onClick={() => handleSort('url')}
                       >
@@ -271,7 +275,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
                       </button>
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <button 
+                      <button
                         className="flex items-center focus:outline-none"
                         onClick={() => handleSort('keyword')}
                       >
@@ -280,7 +284,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
                       </button>
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <button 
+                      <button
                         className="flex items-center focus:outline-none"
                         onClick={() => handleSort('volume')}
                       >
@@ -299,12 +303,11 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
                       <tr key={item.id} className={`hover:bg-gray-50 ${selectedUrls.includes(item.id) ? 'bg-blue-50' : ''}`}>
                         <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-500">
                           <div className="flex items-center">
-                            <div 
-                              className={`w-4 h-4 mr-2 rounded border flex items-center justify-center cursor-pointer ${
-                                selectedUrls.includes(item.id) 
-                                  ? 'bg-blue-600 border-blue-600' 
-                                  : 'border-gray-300 hover:border-blue-400'
-                              }`}
+                            <div
+                              className={`w-4 h-4 mr-2 rounded border flex items-center justify-center cursor-pointer ${selectedUrls.includes(item.id)
+                                ? 'bg-blue-600 border-blue-600'
+                                : 'border-gray-300 hover:border-blue-400'
+                                }`}
                               onClick={() => toggleUrlSelection(item.id)}
                             >
                               {selectedUrls.includes(item.id) && <Check className="h-3 w-3 text-white" />}
@@ -323,21 +326,19 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
                           <div className="flex space-x-2">
                             <button
                               onClick={() => selectSingleUrl(item.id)}
-                              className={`px-2 py-1 text-xs rounded ${
-                                selectedUrls.includes(item.id) && selectedUrls.length === 1
-                                  ? 'bg-blue-600 text-white'
-                                  : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                              }`}
+                              className={`px-2 py-1 text-xs rounded ${selectedUrls.includes(item.id) && selectedUrls.length === 1
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                }`}
                             >
                               View Only
                             </button>
                             <button
                               onClick={() => toggleUrlSelection(item.id)}
-                              className={`px-2 py-1 text-xs rounded ${
-                                selectedUrls.includes(item.id)
-                                  ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                                  : 'bg-green-100 text-green-800 hover:bg-green-200'
-                              }`}
+                              className={`px-2 py-1 text-xs rounded ${selectedUrls.includes(item.id)
+                                ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                                : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                }`}
                             >
                               {selectedUrls.includes(item.id) ? 'Remove' : 'Add'}
                             </button>
@@ -355,20 +356,20 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
                 </tbody>
               </table>
             </div>
-            
+
             <div className="flex flex-wrap gap-2 mb-2">
               <span className="text-sm text-gray-600 font-medium">Selected URLs ({selectedUrls.length}):</span>
               {selectedUrls.length > 0 ? (
                 data
                   .filter(item => selectedUrls.includes(item.id))
                   .map(item => (
-                    <div 
+                    <div
                       key={item.id}
                       className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-800 border border-blue-300 flex items-center"
                     >
                       {item.url.replace(/^https?:\/\//, '').substring(0, 20)}
                       {item.url.replace(/^https?:\/\//, '').length > 20 ? '...' : ''}
-                      <button 
+                      <button
                         onClick={() => toggleUrlSelection(item.id)}
                         className="ml-1 text-blue-600 hover:text-blue-800"
                       >
@@ -383,7 +384,7 @@ const RankingChart: React.FC<RankingChartProps> = ({ data }) => {
           </>
         )}
       </div>
-      
+
       {selectedUrls.length > 0 ? (
         <div className="h-[500px]">
           <Line data={chartData} options={options} />

@@ -14,14 +14,16 @@ import { UrlKeywordPair } from '../types';
 import { format } from 'date-fns';
 import GoogleSearchModal from './GoogleSearchModal';
 import { deleteUrlKeywordPair, updateUrlKeywordPair } from '../services/supabaseService';
+import { useOutletContext } from 'react-router-dom';
 
-interface RankingTableProps {
+interface RouteContext {
   data: UrlKeywordPair[];
   setData: React.Dispatch<React.SetStateAction<UrlKeywordPair[]>>;
   isLoading: boolean;
 }
 
-const RankingTable: React.FC<RankingTableProps> = ({ data, setData, isLoading }) => {
+const RankingTable: React.FC = () => {
+  const { data, setData, isLoading } = useOutletContext<RouteContext>();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
