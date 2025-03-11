@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { UrlKeywordPair } from './types';
-import { getAllUrlKeywordPairs, updateUrlKeywordPair, addUrlKeywordPair } from './services/supabaseService';
+import { getAllUrlKeywordPairs, updateUrlKeywordPair, addUrlKeywordPair, bulkAddRankingHistory } from './services/supabaseService';
 import ActionBar from './components/ActionBar';
 import { generateMockData } from './utils/mockData';
 import Header from './components/Header';
@@ -153,8 +153,26 @@ function App() {
   };
 
   const handleMonthlyUpdate = async () => {
-    // Placeholder for monthly update functionality
-    console.log('Monthly update triggered');
+    const currentMonth = format(new Date(), 'MMM yyyy');
+
+    // Create entries for the current month's rankings
+    const monthlyEntries = data.map(item => ({
+      urlKeywordId: item.id,
+      month: currentMonth,  // This will be "Apr 2024" in April
+      position: item.currentRanking || 0
+    }));
+
+    // Bulk add only the current month's rankings
+    await bulkAddRankingHistory(monthlyEntries);
+
+    // Update UI, preserving all other months' data
+    setData(prevData => prevData.map(item => ({
+      ...item,
+      rankingHistory: [
+        ...item.rankingHistory.filter(h => h.month !== currentMonth), // Keep all other months
+        { month: currentMonth, position: item.currentRanking || 0 }   // Add/update current month
+      ]
+    })));
   };
 
   const activeView = location.pathname === '/chart' ? 'chart' : 'table';
