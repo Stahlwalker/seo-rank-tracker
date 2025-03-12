@@ -13,7 +13,7 @@ import { ArrowUpDown, Trash2, ExternalLink, Filter, Search, X, Edit, Save, XCirc
 import { UrlKeywordPair } from '../types';
 import { format } from 'date-fns';
 import GoogleSearchModal from './GoogleSearchModal';
-import { deleteUrlKeywordPair, updateUrlKeywordPair } from '../services/supabaseService';
+import { deleteUrlKeywordPair, updateUrlKeywordPair, bulkAddRankingHistory } from '../services/supabaseService';
 import { useOutletContext } from 'react-router-dom';
 
 interface RouteContext {
@@ -24,8 +24,9 @@ interface RouteContext {
 
 interface EditingCell {
   id: string;
-  field: 'url' | 'keyword' | 'monthlySearchVolume';
+  field: 'url' | 'keyword' | 'monthlySearchVolume' | string;
   value: string;
+  month?: string;
 }
 
 const RankingTable: React.FC = () => {
@@ -119,8 +120,8 @@ const RankingTable: React.FC = () => {
     }
   };
 
-  const handleStartEditing = (id: string, field: 'url' | 'keyword' | 'monthlySearchVolume', value: string) => {
-    setEditingCell({ id, field, value });
+  const handleStartEditing = (id: string, field: 'url' | 'keyword' | 'monthlySearchVolume' | string, value: string, month?: string) => {
+    setEditingCell({ id, field, value, month });
   };
 
   const handleCancelEditing = () => {
@@ -131,10 +132,10 @@ const RankingTable: React.FC = () => {
     if (!editingCell) return;
 
     try {
-      const item = data.find(item => item.id === editingCell.id);
+      const item = data.find((item: UrlKeywordPair) => item.id === editingCell.id);
       if (!item) return;
 
-      const updatedItem = { ...item };
+      const updatedItem: UrlKeywordPair = { ...item };
 
       if (editingCell.field === 'monthlySearchVolume') {
         const value = parseInt(editingCell.value);
@@ -143,7 +144,33 @@ const RankingTable: React.FC = () => {
           return;
         }
         updatedItem.monthlySearchVolume = value;
-      } else {
+      } else if (editingCell.field.startsWith('month-') && editingCell.month) {
+        const value = parseInt(editingCell.value);
+        if (isNaN(value) || value < 0) {
+          setError('Ranking must be a positive number');
+          return;
+        }
+
+        const monthlyEntries = [{
+          urlKeywordId: item.id,
+          month: editingCell.month,
+          position: value
+        }];
+
+        await bulkAddRankingHistory(monthlyEntries);
+
+        updatedItem.rankingHistory = [
+          ...item.rankingHistory.filter(h => h.month !== editingCell.month),
+          { month: editingCell.month, position: value }
+        ];
+
+        setData((prevData: UrlKeywordPair[]) => prevData.map((i: UrlKeywordPair) =>
+          i.id === item.id ? updatedItem : i
+        ));
+        setEditingCell(null);
+        setError(null);
+        return;
+      } else if (editingCell.field === 'url' || editingCell.field === 'keyword') {
         updatedItem[editingCell.field] = editingCell.value;
       }
 
@@ -151,8 +178,8 @@ const RankingTable: React.FC = () => {
 
       const result = await updateUrlKeywordPair(updatedItem);
       if (result) {
-        setData(prevData => prevData.map(item =>
-          item.id === editingCell.id ? result : item
+        setData((prevData: UrlKeywordPair[]) => prevData.map((i: UrlKeywordPair) =>
+          i.id === editingCell.id ? result : i
         ));
         setEditingCell(null);
         setError(null);
@@ -432,15 +459,63 @@ const RankingTable: React.FC = () => {
         header: month,
         cell: info => {
           const value = info.getValue();
-          return value !== null ? (
-            <span className={`font-medium ${value <= 10 ? 'text-green-600' :
-              value <= 20 ? 'text-yellow-600' :
-                'text-red-600'
-              }`}>
-              {value}
-            </span>
-          ) : (
-            <span className="text-gray-400">-</span>
+          const isEditing = editingCell?.id === info.row.original.id && editingCell.month === month;
+
+          if (isEditing) {
+            return (
+              <div className="flex items-center gap-2">
+                <input
+                  autoFocus
+                  type="number"
+                  value={editingCell.value}
+                  min="0"
+                  onChange={e => setEditingCell(prev => prev ? { ...prev, value: e.target.value } : null)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSaveEditing();
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      handleCancelEditing();
+                    }
+                  }}
+                  onBlur={() => handleSaveEditing()}
+                  className="w-20 px-2 py-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveEditing}
+                  className="p-1 text-green-600 hover:text-green-800"
+                >
+                  <Save className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelEditing}
+                  className="p-1 text-red-600 hover:text-red-800"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            );
+          }
+
+          return (
+            <div className="flex items-center group">
+              <span className={`font-medium ${value !== null ? value <= 10 ? 'text-green-600' :
+                value <= 20 ? 'text-yellow-600' :
+                  'text-red-600'
+                : 'text-gray-400'}`}>
+                {value !== null ? value : '-'}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleStartEditing(info.row.original.id, `month-${month}`, value?.toString() || '0', month)}
+                className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+              >
+                <Edit className="h-3 w-3" />
+              </button>
+            </div>
           );
         },
       })
