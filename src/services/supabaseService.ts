@@ -108,6 +108,8 @@ export const addUrlKeywordPair = async (pair: Partial<UrlKeywordPair>): Promise<
       throw new Error(`Failed to check for existing URL/keyword pair: ${checkError.message}`);
     }
 
+    let finalPair: Database['public']['Tables']['url_keyword_pairs']['Row'];
+
     // If we found existing pairs with the same URL and keyword
     if (existingPairs && existingPairs.length > 0) {
       // If there are duplicates, keep only the most recent one and delete others
@@ -118,7 +120,7 @@ export const addUrlKeywordPair = async (pair: Partial<UrlKeywordPair>): Promise<
         );
 
         // Keep the most recent one
-        const mostRecent = sortedPairs[0];
+        finalPair = sortedPairs[0];
 
         // Delete all others
         const idsToDelete = sortedPairs.slice(1).map(p => p.id);
@@ -132,47 +134,65 @@ export const addUrlKeywordPair = async (pair: Partial<UrlKeywordPair>): Promise<
             console.error('Error cleaning up duplicate entries:', deleteError);
           }
         }
+      } else {
+        // If there's exactly one existing pair
+        finalPair = existingPairs[0];
+      }
+    } else {
+      // If no existing pair was found, insert the new one
+      const { data, error } = await supabase
+        .from('url_keyword_pairs')
+        .insert(dbPair)
+        .select()
+        .single();
 
-        return fromDbUrlKeywordPair(mostRecent, []);
+      if (error) {
+        throw new Error(`Failed to add URL/keyword pair: ${error.message}`);
       }
 
-      // If there's exactly one existing pair, return it
-      return fromDbUrlKeywordPair(existingPairs[0], []);
+      if (!data) {
+        throw new Error('No data returned from insert operation');
+      }
+
+      finalPair = data;
     }
 
-    // If no existing pair was found, insert the new one
-    const { data, error } = await supabase
-      .from('url_keyword_pairs')
-      .insert(dbPair)
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to add URL/keyword pair: ${error.message}`);
-    }
-
-    if (!data) {
-      throw new Error('No data returned from insert operation');
-    }
-
-    // Insert ranking history if any
+    // Insert or update ranking history if any
     if (pair.rankingHistory && pair.rankingHistory.length > 0) {
       const historyRecords = pair.rankingHistory.map(h => ({
-        url_keyword_id: data.id,
+        url_keyword_id: finalPair.id,
         month: h.month,
         position: h.position
       }));
 
       const { error: historyError } = await supabase
         .from('ranking_history')
-        .insert(historyRecords);
+        .upsert(historyRecords, {
+          onConflict: 'url_keyword_id,month'
+        });
 
       if (historyError) {
         throw new Error(`Failed to add ranking history: ${historyError.message}`);
       }
     }
 
-    return fromDbUrlKeywordPair(data, pair.rankingHistory || []);
+    // Get the current ranking history
+    const { data: history, error: historyError } = await supabase
+      .from('ranking_history')
+      .select('*')
+      .eq('url_keyword_id', finalPair.id)
+      .order('month', { ascending: true });
+
+    if (historyError) {
+      console.warn('Failed to fetch ranking history:', historyError);
+    }
+
+    // Convert the history to the app format
+    const rankingHistory = history
+      ? history.map(h => ({ month: h.month, position: h.position }))
+      : pair.rankingHistory || [];
+
+    return fromDbUrlKeywordPair(finalPair, rankingHistory);
   } catch (error) {
     console.error('Error adding URL/keyword pair:', error);
     throw error;
