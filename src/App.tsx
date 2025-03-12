@@ -91,17 +91,36 @@ function App() {
   };
 
   const handleExport = () => {
-    const headers = ['url', 'keyword', 'monthlySearchVolume', 'currentRanking', 'status', 'note'];
+    const months = [
+      'Aug 2023', 'Sep 2023', 'Oct 2023', 'Nov 2023', 'Dec 2023',
+      'Jan 2024', 'Feb 2024', 'Mar 2024', 'Apr 2024', 'May 2024',
+      'Jun 2024', 'Jul 2024', 'Aug 2024', 'Sep 2024', 'Oct 2024',
+      'Nov 2024', 'Dec 2024', 'Jan 2025', 'Feb 2025'
+    ];
+    const headers = [
+      'url',
+      'keyword',
+      'monthlySearchVolume',
+      'currentRanking',
+      'status',
+      'note',
+      ...months
+    ];
     const csvRows = [headers.join(',')];
 
     data.forEach(item => {
+      const rankingByMonth = Object.fromEntries(
+        item.rankingHistory.map(h => [h.month, h.position])
+      );
+
       const row = [
         `"${item.url}"`,
         `"${item.keyword}"`,
         item.monthlySearchVolume !== undefined ? item.monthlySearchVolume : '',
         item.currentRanking !== null ? item.currentRanking : '',
         item.status ? `"${item.status}"` : '',
-        item.note ? `"${item.note.replace(/"/g, '""')}"` : ''
+        item.note ? `"${item.note.replace(/"/g, '""')}"` : '',
+        ...months.map(month => rankingByMonth[month] || '')
       ];
       csvRows.push(row.join(','));
     });
