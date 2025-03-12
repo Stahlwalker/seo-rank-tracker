@@ -9,7 +9,7 @@ import {
   FilterFn,
   getFilteredRowModel,
 } from '@tanstack/react-table';
-import { ArrowUpDown, Trash2, ExternalLink, Filter, Search, X, Edit, Save, XCircle, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { ArrowUpDown, Trash2, ExternalLink, Filter, Search, X, Edit, Save, XCircle, AlertTriangle, CheckCircle2, RefreshCw, Check } from 'lucide-react';
 import { UrlKeywordPair } from '../types';
 import { format } from 'date-fns';
 import GoogleSearchModal from './GoogleSearchModal';
@@ -22,6 +22,12 @@ interface RouteContext {
   isLoading: boolean;
 }
 
+interface EditingCell {
+  id: string;
+  field: 'url' | 'keyword' | 'monthlySearchVolume';
+  value: string;
+}
+
 const RankingTable: React.FC = () => {
   const { data, setData, isLoading } = useOutletContext<RouteContext>();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -32,7 +38,10 @@ const RankingTable: React.FC = () => {
   const [selectedPair, setSelectedPair] = useState<UrlKeywordPair | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
 
   const columnHelper = createColumnHelper<UrlKeywordPair>();
 
@@ -110,40 +119,307 @@ const RankingTable: React.FC = () => {
     }
   };
 
+  const handleStartEditing = (id: string, field: 'url' | 'keyword' | 'monthlySearchVolume', value: string) => {
+    setEditingCell({ id, field, value });
+  };
+
+  const handleCancelEditing = () => {
+    setEditingCell(null);
+  };
+
+  const handleSaveEditing = async () => {
+    if (!editingCell) return;
+
+    try {
+      const item = data.find(item => item.id === editingCell.id);
+      if (!item) return;
+
+      const updatedItem = { ...item };
+
+      if (editingCell.field === 'monthlySearchVolume') {
+        const value = parseInt(editingCell.value);
+        if (isNaN(value)) {
+          setError('Monthly search volume must be a number');
+          return;
+        }
+        updatedItem.monthlySearchVolume = value;
+      } else {
+        updatedItem[editingCell.field] = editingCell.value;
+      }
+
+      updatedItem.lastUpdated = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+
+      const result = await updateUrlKeywordPair(updatedItem);
+      if (result) {
+        setData(prevData => prevData.map(item =>
+          item.id === editingCell.id ? result : item
+        ));
+        setEditingCell(null);
+        setError(null);
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to update field');
+      console.error('Error updating field:', error);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    try {
+      const selectedIds = Array.from(selectedRows);
+      setDeletingIds(new Set(selectedIds));
+      setError(null);
+
+      // Delete items one by one
+      for (const id of selectedIds) {
+        await deleteUrlKeywordPair(id);
+      }
+
+      // Update the data state to remove deleted items
+      setData(prevData => prevData.filter(item => !selectedIds.includes(item.id)));
+      setSelectedRows(new Set()); // Clear selection
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to delete selected items');
+      console.error('Error deleting items:', error);
+    } finally {
+      setDeletingIds(new Set());
+    }
+  };
+
   const columns = [
-    columnHelper.accessor('url', {
-      header: 'URL',
-      cell: info => (
-        <div className="flex items-center max-w-full">
-          <a
-            href={info.getValue()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:text-blue-800 hover:underline flex items-center truncate"
+    columnHelper.display({
+      id: 'select',
+      header: ({ table }) => {
+        const filteredRows = table.getFilteredRowModel().rows;
+        const allSelected = filteredRows.length > 0 && filteredRows.every(row => selectedRows.has(row.original.id));
+        const someSelected = filteredRows.some(row => selectedRows.has(row.original.id)) && !allSelected;
+
+        return (
+          <div className="px-1">
+            <div
+              className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer ${allSelected
+                ? 'bg-blue-600 border-blue-600'
+                : someSelected
+                  ? 'bg-blue-300 border-blue-300'
+                  : 'border-gray-300 hover:border-blue-400'
+                }`}
+              onClick={() => {
+                if (allSelected) {
+                  // Deselect all filtered rows
+                  setSelectedRows(prev => {
+                    const next = new Set(prev);
+                    filteredRows.forEach(row => next.delete(row.original.id));
+                    return next;
+                  });
+                } else {
+                  // Select all filtered rows
+                  setSelectedRows(prev => {
+                    const next = new Set(prev);
+                    filteredRows.forEach(row => next.add(row.original.id));
+                    return next;
+                  });
+                }
+              }}
+            >
+              {allSelected && <Check className="h-3 w-3 text-white" />}
+              {someSelected && <div className="w-2 h-2 bg-white rounded-sm" />}
+            </div>
+          </div>
+        );
+      },
+      cell: ({ row }) => (
+        <div className="px-1">
+          <div
+            className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer ${selectedRows.has(row.original.id)
+              ? 'bg-blue-600 border-blue-600'
+              : 'border-gray-300 hover:border-blue-400'
+              }`}
+            onClick={() => {
+              setSelectedRows(prev => {
+                const next = new Set(prev);
+                if (next.has(row.original.id)) {
+                  next.delete(row.original.id);
+                } else {
+                  next.add(row.original.id);
+                }
+                return next;
+              });
+            }}
           >
-            <span className="truncate">
-              {info.getValue().replace(/^https?:\/\//, '').substring(0, 30)}
-              {info.getValue().replace(/^https?:\/\//, '').length > 30 ? '...' : ''}
-            </span>
-            <ExternalLink className="h-3 w-3 ml-1 flex-shrink-0" />
-          </a>
+            {selectedRows.has(row.original.id) && <Check className="h-3 w-3 text-white" />}
+          </div>
         </div>
       ),
     }),
+    columnHelper.accessor('url', {
+      header: 'URL',
+      cell: info => {
+        const isEditing = editingCell?.id === info.row.original.id && editingCell.field === 'url';
+
+        return isEditing ? (
+          <div className="flex items-center gap-2">
+            <input
+              autoFocus
+              type="text"
+              value={editingCell.value}
+              onChange={e => setEditingCell(prev => prev ? { ...prev, value: e.target.value } : null)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSaveEditing();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  handleCancelEditing();
+                }
+              }}
+              onBlur={() => handleSaveEditing()}
+              className="w-full px-2 py-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="button"
+              onClick={handleSaveEditing}
+              className="p-1 text-green-600 hover:text-green-800"
+            >
+              <Save className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelEditing}
+              className="p-1 text-red-600 hover:text-red-800"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center max-w-full group">
+            <a
+              href={info.getValue()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 hover:underline flex items-center truncate"
+            >
+              <span className="truncate">
+                {info.getValue().replace(/^https?:\/\//, '').substring(0, 30)}
+                {info.getValue().replace(/^https?:\/\//, '').length > 30 ? '...' : ''}
+              </span>
+              <ExternalLink className="h-3 w-3 ml-1 flex-shrink-0" />
+            </a>
+            <button
+              type="button"
+              onClick={() => handleStartEditing(info.row.original.id, 'url', info.getValue())}
+              className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <Edit className="h-3 w-3" />
+            </button>
+          </div>
+        );
+      },
+    }),
     columnHelper.accessor('keyword', {
       header: 'Keyword',
-      cell: info => info.getValue(),
+      cell: info => {
+        const isEditing = editingCell?.id === info.row.original.id && editingCell.field === 'keyword';
+
+        return isEditing ? (
+          <div className="flex items-center gap-2">
+            <input
+              autoFocus
+              type="text"
+              value={editingCell.value}
+              onChange={e => setEditingCell(prev => prev ? { ...prev, value: e.target.value } : null)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSaveEditing();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  handleCancelEditing();
+                }
+              }}
+              onBlur={() => handleSaveEditing()}
+              className="w-full px-2 py-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="button"
+              onClick={handleSaveEditing}
+              className="p-1 text-green-600 hover:text-green-800"
+            >
+              <Save className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelEditing}
+              className="p-1 text-red-600 hover:text-red-800"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center group">
+            <span>{info.getValue()}</span>
+            <button
+              type="button"
+              onClick={() => handleStartEditing(info.row.original.id, 'keyword', info.getValue())}
+              className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <Edit className="h-3 w-3" />
+            </button>
+          </div>
+        );
+      },
     }),
     columnHelper.accessor('monthlySearchVolume', {
       header: 'Monthly Search Volume',
       cell: info => {
+        const isEditing = editingCell?.id === info.row.original.id && editingCell.field === 'monthlySearchVolume';
         const value = info.getValue();
-        return value !== undefined ? (
-          <span className="font-medium">
-            {value.toLocaleString()}
-          </span>
+
+        return isEditing ? (
+          <div className="flex items-center gap-2">
+            <input
+              autoFocus
+              type="number"
+              value={editingCell.value}
+              onChange={e => setEditingCell(prev => prev ? { ...prev, value: e.target.value } : null)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSaveEditing();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  handleCancelEditing();
+                }
+              }}
+              onBlur={() => handleSaveEditing()}
+              className="w-full px-2 py-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="button"
+              onClick={handleSaveEditing}
+              className="p-1 text-green-600 hover:text-green-800"
+            >
+              <Save className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelEditing}
+              className="p-1 text-red-600 hover:text-red-800"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         ) : (
-          <span className="text-gray-400">-</span>
+          <div className="flex items-center group">
+            <span className="font-medium">
+              {value !== undefined ? value.toLocaleString() : '-'}
+            </span>
+            <button
+              type="button"
+              onClick={() => handleStartEditing(info.row.original.id, 'monthlySearchVolume', value?.toString() || '')}
+              className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <Edit className="h-3 w-3" />
+            </button>
+          </div>
         );
       },
     }),
@@ -417,7 +693,25 @@ const RankingTable: React.FC = () => {
     <div>
       <div className="bg-white p-4 border-b border-gray-200">
         <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between sm:items-center">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {selectedRows.size > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">
+                  {selectedRows.size} {selectedRows.size === 1 ? 'item' : 'items'} selected
+                </span>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={deletingIds.size > 0}
+                  className={`px-3 py-1 text-sm rounded-md flex items-center ${deletingIds.size > 0
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-red-100 text-red-700 hover:bg-red-200'
+                    }`}
+                >
+                  <Trash2 className={`h-3 w-3 mr-1 ${deletingIds.size > 0 ? 'animate-pulse' : ''}`} />
+                  Delete Selected
+                </button>
+              </div>
+            )}
             <button
               onClick={() => toggleFilter('top10')}
               className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top10')
@@ -481,85 +775,85 @@ const RankingTable: React.FC = () => {
             />
           </div>
         </div>
-      </div>
 
-      {error && (
-        <div className="m-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
-          <p className="font-medium">Error</p>
-          <p>{error}</p>
-        </div>
-      )}
+        {error && (
+          <div className="m-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
+            <p className="font-medium">Error</p>
+            <p>{error}</p>
+          </div>
+        )}
 
-      <div className="overflow-x-auto shadow-sm">
-        <div className="inline-block min-w-full align-middle">
-          <table className="min-w-full divide-y divide-gray-200 table-fixed">
-            <thead className="bg-gray-50">
-              <tr>
-                {table.getFlatHeaders().map(header => (
-                  <th
-                    key={header.id}
-                    scope="col"
-                    className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky top-0 bg-gray-50"
-                    style={{ minWidth: header.id === 'url' ? '200px' : header.id === 'keyword' ? '150px' : 'auto' }}
-                  >
-                    {header.isPlaceholder ? null : (
-                      <div
-                        className={header.column.getCanSort() ? 'cursor-pointer select-none flex items-center' : ''}
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {header.column.getCanSort() && (
-                          <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
-                        )}
-                      </div>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {table.getRowModel().rows.length > 0 ? (
-                table.getRowModel().rows.map(row => (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    {row.getVisibleCells().map(cell => (
-                      <td
-                        key={cell.id}
-                        className="px-3 sm:px-6 py-2 text-sm text-gray-500 truncate"
-                      >
-                        <div className="truncate">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : (
+        <div className="overflow-x-auto shadow-sm">
+          <div className="inline-block min-w-full align-middle">
+            <table className="min-w-full divide-y divide-gray-200 table-fixed">
+              <thead className="bg-gray-50">
                 <tr>
-                  <td colSpan={table.getAllColumns().length} className="px-3 sm:px-6 py-4 text-center text-sm text-gray-500">
-                    {searchTerm || activeFilters.length > 0 ? 'No results match your search criteria' : 'No data available'}
-                  </td>
+                  {table.getFlatHeaders().map(header => (
+                    <th
+                      key={header.id}
+                      scope="col"
+                      className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky top-0 bg-gray-50"
+                      style={{ minWidth: header.id === 'url' ? '200px' : header.id === 'keyword' ? '150px' : 'auto' }}
+                    >
+                      {header.isPlaceholder ? null : (
+                        <div
+                          className={header.column.getCanSort() ? 'cursor-pointer select-none flex items-center' : ''}
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {header.column.getCanSort() && (
+                            <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
+                          )}
+                        </div>
+                      )}
+                    </th>
+                  ))}
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {table.getRowModel().rows.length > 0 ? (
+                  table.getRowModel().rows.map(row => (
+                    <tr key={row.id} className="hover:bg-gray-50">
+                      {row.getVisibleCells().map(cell => (
+                        <td
+                          key={cell.id}
+                          className="px-3 sm:px-6 py-2 text-sm text-gray-500 truncate"
+                        >
+                          <div className="truncate">
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={table.getAllColumns().length} className="px-3 sm:px-6 py-4 text-center text-sm text-gray-500">
+                      {searchTerm || activeFilters.length > 0 ? 'No results match your search criteria' : 'No data available'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {selectedPair && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <GoogleSearchModal
-            urlKeywordPair={selectedPair}
-            onClose={() => setSelectedPair(null)}
-            onUpdateRanking={(id, ranking) => {
-              setData(prevData => prevData.map(item =>
-                item.id === id
-                  ? { ...item, currentRanking: ranking, lastUpdated: format(new Date(), 'yyyy-MM-dd HH:mm:ss') }
-                  : item
-              ));
-            }}
-          />
-        </div>
-      )}
+        {selectedPair && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <GoogleSearchModal
+              urlKeywordPair={selectedPair}
+              onClose={() => setSelectedPair(null)}
+              onUpdateRanking={(id, ranking) => {
+                setData(prevData => prevData.map(item =>
+                  item.id === id
+                    ? { ...item, currentRanking: ranking, lastUpdated: format(new Date(), 'yyyy-MM-dd HH:mm:ss') }
+                    : item
+                ));
+              }}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 };
