@@ -6,6 +6,8 @@ import { getAllUrlKeywordPairs, updateUrlKeywordPair, addUrlKeywordPair, bulkAdd
 import ActionBar from './components/ActionBar';
 import { generateMockData } from './utils/mockData';
 import Header from './components/Header';
+import { supabase } from './lib/supabase';
+import { Database } from './types/supabase';
 
 function App() {
   const [data, setData] = useState<UrlKeywordPair[]>([]);
@@ -18,8 +20,37 @@ function App() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const pairs = await getAllUrlKeywordPairs();
-        setData(pairs.length > 0 ? pairs : generateMockData());
+        // Force a fresh fetch from Supabase
+        const { data: pairs, error } = await supabase
+          .from('url_keyword_pairs')
+          .select(`
+            *,
+            ranking_history (
+              month,
+              position
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Transform the data to match UrlKeywordPair type
+        const transformedPairs = (pairs || []).map(pair => ({
+          id: pair.id,
+          url: pair.url,
+          keyword: pair.keyword,
+          monthlySearchVolume: pair.monthly_search_volume || undefined,
+          currentRanking: pair.current_ranking || null,
+          note: pair.note || undefined,
+          status: pair.status as 'Testing' | 'Needs Improvement' | '' || undefined,
+          lastUpdated: pair.last_updated || undefined,
+          rankingHistory: (pair.ranking_history as Database['public']['Tables']['ranking_history']['Row'][] || []).map(h => ({
+            month: h.month,
+            position: h.position
+          })) || []
+        }));
+
+        setData(transformedPairs);
       } catch (error) {
         console.error('Error loading data:', error);
         setError(
@@ -27,8 +58,7 @@ function App() {
             ? error.message
             : 'Failed to load data. Please try again.'
         );
-        // Load mock data as fallback
-        setData(generateMockData());
+        setData([]);
       } finally {
         setIsLoading(false);
       }

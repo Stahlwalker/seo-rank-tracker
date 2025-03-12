@@ -19,12 +19,20 @@ export const supabase = createClient<Database>(
   {
     auth: {
       autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true
+      persistSession: false,
+      detectSessionInUrl: false
     },
     global: {
       headers: {
         'apikey': supabaseAnonKey
+      }
+    },
+    db: {
+      schema: 'public'
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 10
       }
     }
   }
@@ -46,7 +54,7 @@ export const testConnection = async () => {
   try {
     // First check if we can connect at all
     const { error: healthError } = await supabase.from('url_keyword_pairs').select('count').limit(0);
-    
+
     if (healthError) {
       if (healthError.message.includes('Invalid API key')) {
         connectionError = new Error(
@@ -68,10 +76,10 @@ export const testConnection = async () => {
     connectionTested = true;
   } catch (error) {
     // Handle network errors or other unexpected issues
-    connectionError = error instanceof Error 
-      ? error 
+    connectionError = error instanceof Error
+      ? error
       : new Error('Failed to connect to Supabase. Please check your configuration.');
-    
+
     console.error('Supabase connection error:', error);
     throw connectionError;
   }
