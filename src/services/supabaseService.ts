@@ -283,7 +283,14 @@ export const bulkAddRankingHistory = async (entries: { urlKeywordId: string, mon
   try {
     await ensureConnection();
 
-    const historyRecords = entries.map(entry => ({
+    // Deduplicate entries by url_keyword_id and month, keeping the latest position
+    const deduplicatedEntries = entries.reduce((acc, entry) => {
+      const key = `${entry.urlKeywordId}-${entry.month}`;
+      acc[key] = entry;
+      return acc;
+    }, {} as Record<string, typeof entries[0]>);
+
+    const historyRecords = Object.values(deduplicatedEntries).map(entry => ({
       url_keyword_id: entry.urlKeywordId,
       month: entry.month,
       position: entry.position

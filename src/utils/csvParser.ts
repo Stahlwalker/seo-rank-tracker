@@ -56,13 +56,10 @@ export const parseCSV = (file: File): Promise<UrlKeywordPair[]> => {
           // Identify monthly ranking columns (format: MMM YYYY)
           const monthlyColumns = headers.filter(header => {
             console.log('Checking header:', header);
-            // Updated regex to match "Aug 2023" format more loosely
-            const monthRegex = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\s-]+\d{4}$/;
+            // Updated regex to be more flexible with spacing
+            const monthRegex = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*\d{4}$/i;
             const isMonthly = monthRegex.test(header);
-            console.log(`Header "${header}" is monthly:`, isMonthly);
-            if (isMonthly) {
-              console.log('Found monthly column:', header);
-            }
+            console.log(`Header "${header}" matches monthly format:`, isMonthly);
             return isMonthly;
           });
 
@@ -95,21 +92,36 @@ export const parseCSV = (file: File): Promise<UrlKeywordPair[]> => {
             const monthlySearchVolume = parseMonthlySearchVolume(row.monthlySearchVolume);
             const currentRanking = parseCurrentRanking(row.currentRanking);
 
-            // Parse monthly ranking history
+            // Parse monthly ranking history with detailed logging
             const rankingHistory: RankingData[] = monthlyColumns
               .map(month => {
                 const monthValue = row[month];
-                console.log(`Parsing month ${month} for URL ${row.url}:`, monthValue);
-                if (monthValue === undefined || monthValue === '') {
-                  console.log(`No value found for month ${month}`);
+                console.log(`Processing month ${month} for URL ${row.url}:`, {
+                  rawValue: monthValue,
+                  valueType: typeof monthValue,
+                  isNA: monthValue?.toLowerCase() === 'n/a'
+                });
+
+                if (monthValue === undefined || monthValue === '' || monthValue?.toLowerCase() === 'n/a') {
+                  console.log(`Skipping month ${month} due to empty/n/a value`);
                   return null;
                 }
+
                 const position = parseNumber(monthValue);
-                console.log(`Parsed position for ${month}:`, position);
-                return position !== undefined ? {
+                console.log(`Parsed position for ${month}:`, {
+                  originalValue: monthValue,
+                  parsedPosition: position
+                });
+
+                if (position === undefined) {
+                  console.log(`Failed to parse position for ${month}`);
+                  return null;
+                }
+
+                return {
                   month,
                   position
-                } : null;
+                };
               })
               .filter((entry): entry is RankingData => entry !== null);
 
