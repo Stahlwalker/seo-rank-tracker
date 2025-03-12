@@ -155,24 +155,47 @@ function App() {
   const handleMonthlyUpdate = async () => {
     const currentMonth = format(new Date(), 'MMM yyyy');
 
-    // Create entries for the current month's rankings
-    const monthlyEntries = data.map(item => ({
-      urlKeywordId: item.id,
-      month: currentMonth,  // This will be "Apr 2024" in April
-      position: item.currentRanking || 0
-    }));
+    try {
+      // Create entries only for items that have a current ranking
+      const monthlyEntries = data
+        .filter(item => item.currentRanking !== null)
+        .map(item => ({
+          urlKeywordId: item.id,
+          month: currentMonth,
+          position: item.currentRanking || 0
+        }));
 
-    // Bulk add only the current month's rankings
-    await bulkAddRankingHistory(monthlyEntries);
+      if (monthlyEntries.length === 0) {
+        setError('No current rankings available to record for this month.');
+        return;
+      }
 
-    // Update UI, preserving all other months' data
-    setData(prevData => prevData.map(item => ({
-      ...item,
-      rankingHistory: [
-        ...item.rankingHistory.filter(h => h.month !== currentMonth), // Keep all other months
-        { month: currentMonth, position: item.currentRanking || 0 }   // Add/update current month
-      ]
-    })));
+      // Bulk add/update the current month's rankings
+      await bulkAddRankingHistory(monthlyEntries);
+
+      // Update UI, preserving historical data except for current month
+      setData(prevData => prevData.map(item => {
+        // Only add/update history if the item has a current ranking
+        if (item.currentRanking === null) return item;
+
+        return {
+          ...item,
+          rankingHistory: [
+            ...item.rankingHistory.filter(h => h.month !== currentMonth), // Keep all other months
+            { month: currentMonth, position: item.currentRanking || 0 }   // Add/update current month
+          ]
+        };
+      }));
+
+      setError(null);
+    } catch (error) {
+      console.error('Error updating monthly rankings:', error);
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update monthly rankings. Please try again.'
+      );
+    }
   };
 
   const activeView = location.pathname === '/chart' ? 'chart' : 'table';
