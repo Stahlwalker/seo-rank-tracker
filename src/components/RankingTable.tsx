@@ -9,11 +9,11 @@ import {
   FilterFn,
   getFilteredRowModel,
 } from '@tanstack/react-table';
-import { ArrowUpDown, Trash2, ExternalLink, Filter, Search, X, Edit, Save, XCircle, AlertTriangle, CheckCircle2, RefreshCw, Check } from 'lucide-react';
+import { ArrowUpDown, Trash2, ExternalLink, Filter, Search, X, Edit, Save, XCircle, AlertTriangle, CheckCircle2, RefreshCw, Check, Undo2 } from 'lucide-react';
 import { UrlKeywordPair } from '../types';
 import { format } from 'date-fns';
 import GoogleSearchModal from './GoogleSearchModal';
-import { deleteUrlKeywordPair, updateUrlKeywordPair, bulkAddRankingHistory } from '../services/supabaseService';
+import { deleteUrlKeywordPair, updateUrlKeywordPair, bulkAddRankingHistory, addUrlKeywordPair } from '../services/supabaseService';
 import { useOutletContext } from 'react-router-dom';
 
 interface RouteContext {
@@ -41,6 +41,7 @@ const RankingTable: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [recentlyDeleted, setRecentlyDeleted] = useState<UrlKeywordPair[]>([]);
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,12 +64,31 @@ const RankingTable: React.FC = () => {
 
   const monthColumns = generateMonthColumns();
 
+  const handleRestore = async (item: UrlKeywordPair) => {
+    try {
+      const restoredItem = await addUrlKeywordPair(item);
+      if (restoredItem) {
+        setData(prevData => [...prevData, restoredItem]);
+        setRecentlyDeleted(prev => prev.filter(i => i.id !== item.id));
+        setError(null);
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to restore item');
+      console.error('Error restoring item:', error);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     try {
       setDeletingIds(prev => new Set([...prev, id]));
       setError(null);
 
+      const itemToDelete = data.find(item => item.id === id);
+      if (!itemToDelete) return;
+
       await deleteUrlKeywordPair(id);
+
+      setRecentlyDeleted(prev => [itemToDelete, ...prev].slice(0, 5));
       setData(prevData => prevData.filter(item => item.id !== id));
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to delete item');
@@ -196,14 +216,15 @@ const RankingTable: React.FC = () => {
       setDeletingIds(new Set(selectedIds));
       setError(null);
 
-      // Delete items one by one
+      const itemsToDelete = data.filter(item => selectedIds.includes(item.id));
+
       for (const id of selectedIds) {
         await deleteUrlKeywordPair(id);
       }
 
-      // Update the data state to remove deleted items
+      setRecentlyDeleted(prev => [...itemsToDelete, ...prev].slice(0, 5));
       setData(prevData => prevData.filter(item => !selectedIds.includes(item.id)));
-      setSelectedRows(new Set()); // Clear selection
+      setSelectedRows(new Set());
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to delete selected items');
       console.error('Error deleting items:', error);
@@ -231,14 +252,12 @@ const RankingTable: React.FC = () => {
                 }`}
               onClick={() => {
                 if (allSelected) {
-                  // Deselect all filtered rows
                   setSelectedRows(prev => {
                     const next = new Set(prev);
                     filteredRows.forEach(row => next.delete(row.original.id));
                     return next;
                   });
                 } else {
-                  // Select all filtered rows
                   setSelectedRows(prev => {
                     const next = new Set(prev);
                     filteredRows.forEach(row => next.add(row.original.id));
@@ -765,169 +784,198 @@ const RankingTable: React.FC = () => {
   }
 
   return (
-    <div>
-      <div className="bg-white p-4 border-b border-gray-200">
-        <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between sm:items-center">
-          <div className="flex flex-wrap items-center gap-2">
-            {selectedRows.size > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">
-                  {selectedRows.size} {selectedRows.size === 1 ? 'item' : 'items'} selected
-                </span>
+    <div className="space-y-4">
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 flex items-center space-x-2 text-red-700">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className="bg-white rounded-lg shadow">
+        <div className="p-4 sm:p-6 space-y-4">
+          {recentlyDeleted.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-blue-700">
+                <Undo2 className="h-4 w-4" />
+                <span>Recently deleted: {recentlyDeleted.length} item(s)</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                {recentlyDeleted.map((item, index) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleRestore(item)}
+                    className="px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md flex items-center space-x-1"
+                  >
+                    <span className="truncate max-w-[200px]">Restore "{item.keyword}"</span>
+                  </button>
+                ))}
                 <button
-                  onClick={handleBulkDelete}
-                  disabled={deletingIds.size > 0}
-                  className={`px-3 py-1 text-sm rounded-md flex items-center ${deletingIds.size > 0
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-red-100 text-red-700 hover:bg-red-200'
-                    }`}
+                  onClick={() => setRecentlyDeleted([])}
+                  className="p-1 hover:bg-blue-200 rounded-md"
+                  title="Clear undo history"
                 >
-                  <Trash2 className={`h-3 w-3 mr-1 ${deletingIds.size > 0 ? 'animate-pulse' : ''}`} />
-                  Delete Selected
+                  <X className="h-4 w-4" />
                 </button>
               </div>
-            )}
-            <button
-              onClick={() => toggleFilter('top10')}
-              className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top10')
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-            >
-              <Filter className="h-3 w-3 mr-1" />
-              Top 10
-            </button>
-            <button
-              onClick={() => toggleFilter('top20')}
-              className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top20')
-                ? 'bg-yellow-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-            >
-              <Filter className="h-3 w-3 mr-1" />
-              11-20
-            </button>
-            <button
-              onClick={() => toggleFilter('top30')}
-              className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top30')
-                ? 'bg-red-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-            >
-              <Filter className="h-3 w-3 mr-1" />
-              21-30
-            </button>
-            <button
-              onClick={() => toggleFilter('below30')}
-              className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('below30')
-                ? 'bg-gray-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-            >
-              <Filter className="h-3 w-3 mr-1" />
-              Below 30
-            </button>
-            {(activeFilters.length > 0 || searchTerm) && (
-              <button
-                onClick={clearFilters}
-                className="px-3 py-1 text-sm rounded-md bg-red-100 text-red-700 hover:bg-red-200 flex items-center"
-              >
-                <X className="h-3 w-3 mr-1" />
-                Clear Filters
-              </button>
-            )}
-          </div>
-          <div className="relative w-full sm:w-64">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400" />
             </div>
-            <input
-              type="text"
-              placeholder="Search URLs or keywords..."
-              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
+          )}
 
-        {error && (
-          <div className="m-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
-            <p className="font-medium">Error</p>
-            <p>{error}</p>
+          <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between sm:items-center">
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedRows.size > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">
+                    {selectedRows.size} {selectedRows.size === 1 ? 'item' : 'items'} selected
+                  </span>
+                  <button
+                    onClick={handleBulkDelete}
+                    disabled={deletingIds.size > 0}
+                    className={`px-3 py-1 text-sm rounded-md flex items-center ${deletingIds.size > 0
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-red-100 text-red-700 hover:bg-red-200'
+                      }`}
+                  >
+                    <Trash2 className={`h-3 w-3 mr-1 ${deletingIds.size > 0 ? 'animate-pulse' : ''}`} />
+                    Delete Selected
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={() => toggleFilter('top10')}
+                className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top10')
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                <Filter className="h-3 w-3 mr-1" />
+                Top 10
+              </button>
+              <button
+                onClick={() => toggleFilter('top20')}
+                className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top20')
+                  ? 'bg-yellow-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                <Filter className="h-3 w-3 mr-1" />
+                11-20
+              </button>
+              <button
+                onClick={() => toggleFilter('top30')}
+                className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top30')
+                  ? 'bg-red-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                <Filter className="h-3 w-3 mr-1" />
+                21-30
+              </button>
+              <button
+                onClick={() => toggleFilter('below30')}
+                className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('below30')
+                  ? 'bg-gray-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                <Filter className="h-3 w-3 mr-1" />
+                Below 30
+              </button>
+              {(activeFilters.length > 0 || searchTerm) && (
+                <button
+                  onClick={clearFilters}
+                  className="px-3 py-1 text-sm rounded-md bg-red-100 text-red-700 hover:bg-red-200 flex items-center"
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Clear Filters
+                </button>
+              )}
+            </div>
+            <div className="relative w-full sm:w-64">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-4 w-4 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search URLs or keywords..."
+                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
-        )}
 
-        <div className="overflow-x-auto shadow-sm">
-          <div className="inline-block min-w-full align-middle">
-            <table className="min-w-full divide-y divide-gray-200 table-fixed">
-              <thead className="bg-gray-50">
-                <tr>
-                  {table.getFlatHeaders().map(header => (
-                    <th
-                      key={header.id}
-                      scope="col"
-                      className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky top-0 bg-gray-50"
-                      style={{ minWidth: header.id === 'url' ? '200px' : header.id === 'keyword' ? '150px' : 'auto' }}
-                    >
-                      {header.isPlaceholder ? null : (
-                        <div
-                          className={header.column.getCanSort() ? 'cursor-pointer select-none flex items-center' : ''}
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {header.column.getCanSort() && (
-                            <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
-                          )}
-                        </div>
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {table.getRowModel().rows.length > 0 ? (
-                  table.getRowModel().rows.map(row => (
-                    <tr key={row.id} className="hover:bg-gray-50">
-                      {row.getVisibleCells().map(cell => (
-                        <td
-                          key={cell.id}
-                          className="px-3 sm:px-6 py-2 text-sm text-gray-500 truncate"
-                        >
-                          <div className="truncate">
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </div>
-                        </td>
-                      ))}
-                    </tr>
-                  ))
-                ) : (
+          <div className="overflow-x-auto shadow-sm">
+            <div className="inline-block min-w-full align-middle">
+              <table className="min-w-full divide-y divide-gray-200 table-fixed">
+                <thead className="bg-gray-50">
                   <tr>
-                    <td colSpan={table.getAllColumns().length} className="px-3 sm:px-6 py-4 text-center text-sm text-gray-500">
-                      {searchTerm || activeFilters.length > 0 ? 'No results match your search criteria' : 'No data available'}
-                    </td>
+                    {table.getFlatHeaders().map(header => (
+                      <th
+                        key={header.id}
+                        scope="col"
+                        className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky top-0 bg-gray-50"
+                        style={{ minWidth: header.id === 'url' ? '200px' : header.id === 'keyword' ? '150px' : 'auto' }}
+                      >
+                        {header.isPlaceholder ? null : (
+                          <div
+                            className={header.column.getCanSort() ? 'cursor-pointer select-none flex items-center' : ''}
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {header.column.getCanSort() && (
+                              <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
+                            )}
+                          </div>
+                        )}
+                      </th>
+                    ))}
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {table.getRowModel().rows.length > 0 ? (
+                    table.getRowModel().rows.map(row => (
+                      <tr key={row.id} className="hover:bg-gray-50">
+                        {row.getVisibleCells().map(cell => (
+                          <td
+                            key={cell.id}
+                            className="px-3 sm:px-6 py-2 text-sm text-gray-500 truncate"
+                          >
+                            <div className="truncate">
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </div>
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={table.getAllColumns().length} className="px-3 sm:px-6 py-4 text-center text-sm text-gray-500">
+                        {searchTerm || activeFilters.length > 0 ? 'No results match your search criteria' : 'No data available'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
 
-        {selectedPair && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <GoogleSearchModal
-              urlKeywordPair={selectedPair}
-              onClose={() => setSelectedPair(null)}
-              onUpdateRanking={(id, ranking) => {
-                setData(prevData => prevData.map(item =>
-                  item.id === id
-                    ? { ...item, currentRanking: ranking, lastUpdated: format(new Date(), 'yyyy-MM-dd HH:mm:ss') }
-                    : item
-                ));
-              }}
-            />
-          </div>
-        )}
+          {selectedPair && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <GoogleSearchModal
+                urlKeywordPair={selectedPair}
+                onClose={() => setSelectedPair(null)}
+                onUpdateRanking={(id, ranking) => {
+                  setData(prevData => prevData.map(item =>
+                    item.id === id
+                      ? { ...item, currentRanking: ranking, lastUpdated: format(new Date(), 'yyyy-MM-dd HH:mm:ss') }
+                      : item
+                  ));
+                }}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
