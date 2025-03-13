@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Upload, Download, RefreshCw } from 'lucide-react';
+import { Plus, Upload, Download, RefreshCw, Calendar } from 'lucide-react';
 import AddUrlForm from './AddUrlForm';
 import ImportModal from './ImportModal';
 import { UrlKeywordPair } from '../types';
@@ -73,7 +73,7 @@ const ActionBar: React.FC<ActionBarProps> = ({
               className="flex-1 sm:flex-none px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 flex items-center justify-center sm:justify-start"
               title="Simulate monthly update"
             >
-              <RefreshCw className="h-4 w-4 sm:mr-1" />
+              <Calendar className="h-4 w-4 sm:mr-1" />
               <span className="hidden sm:inline">Monthly Update</span>
             </button>
           </div>
