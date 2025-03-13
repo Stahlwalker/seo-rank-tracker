@@ -39,7 +39,7 @@ function App() {
           id: pair.id,
           url: pair.url,
           keyword: pair.keyword,
-          monthlySearchVolume: pair.monthly_search_volume || undefined,
+          monthlySearchVolume: typeof pair.monthly_search_volume === 'number' ? pair.monthly_search_volume : undefined,
           currentRanking: pair.current_ranking || null,
           note: pair.note || undefined,
           status: pair.status as 'Testing' | 'Needs Improvement' | '' || undefined,
