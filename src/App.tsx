@@ -8,13 +8,15 @@ import { generateMockData } from './utils/mockData';
 import Header from './components/Header';
 import { supabase } from './lib/supabase';
 import { Database } from './types/supabase';
+import { useTheme } from './context/ThemeContext';
 
 function App() {
   const [data, setData] = useState<UrlKeywordPair[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
+  const { isDark } = useTheme();
 
   useEffect(() => {
     const loadData = async () => {
@@ -234,7 +236,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen dark-gradient">
+    <div className={`min-h-screen ${isDark ? 'dark-gradient' : 'bg-gray-50'}`}>
       <Header activeView={activeView} setActiveView={setActiveView} />
 
       <main>
@@ -255,7 +257,7 @@ function App() {
               </div>
             )}
 
-            <div className="content-area rounded-lg p-4">
+            <div className={`rounded-lg p-4 ${isDark ? 'bg-gray-900 text-gray-100' : 'bg-white text-gray-900'}`}>
               <Outlet context={{ data, setData, isLoading }} />
             </div>
           </div>
