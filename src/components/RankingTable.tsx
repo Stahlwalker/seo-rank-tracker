@@ -905,58 +905,116 @@ const RankingTable: React.FC = () => {
             </div>
           </div>
 
-          <div className="overflow-x-auto shadow-sm">
-            <div className="inline-block min-w-full align-middle">
-              <table className="min-w-full divide-y divide-gray-200 table-fixed">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {table.getFlatHeaders().map(header => (
-                      <th
-                        key={header.id}
-                        scope="col"
-                        className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky top-0 bg-gray-50"
-                        style={{ minWidth: header.id === 'url' ? '200px' : header.id === 'keyword' ? '150px' : 'auto' }}
-                      >
-                        {header.isPlaceholder ? null : (
-                          <div
-                            className={header.column.getCanSort() ? 'cursor-pointer select-none flex items-center' : ''}
-                            onClick={header.column.getToggleSortingHandler()}
-                          >
-                            {flexRender(header.column.columnDef.header, header.getContext())}
-                            {header.column.getCanSort() && (
-                              <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
-                            )}
+          <div className="relative">
+            <div className="overflow-x-auto shadow-sm max-h-[70vh] border border-gray-200 rounded-lg">
+              <div className="inline-block min-w-full align-middle">
+                <div className="relative">
+                  <table className="min-w-full divide-y divide-gray-200 table-fixed">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {/* Fixed columns */}
+                        <th
+                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky left-0 z-20 bg-gray-50 border-r border-gray-200"
+                          style={{ minWidth: '200px' }}
+                        >
+                          <div className="cursor-pointer select-none flex items-center" onClick={table.getColumn('url')?.getToggleSortingHandler()}>
+                            URL
+                            <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
                           </div>
-                        )}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {table.getRowModel().rows.length > 0 ? (
-                    table.getRowModel().rows.map(row => (
-                      <tr key={row.id} className="hover:bg-gray-50">
-                        {row.getVisibleCells().map(cell => (
-                          <td
-                            key={cell.id}
-                            className="px-3 sm:px-6 py-2 text-sm text-gray-500 truncate"
+                        </th>
+                        <th
+                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky left-[200px] z-20 bg-gray-50 border-r border-gray-200"
+                          style={{ minWidth: '150px' }}
+                        >
+                          <div className="cursor-pointer select-none flex items-center" onClick={table.getColumn('keyword')?.getToggleSortingHandler()}>
+                            Keyword
+                            <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
+                          </div>
+                        </th>
+                        <th
+                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap sticky left-[350px] z-20 bg-gray-50 border-r border-gray-200"
+                          style={{ minWidth: '150px' }}
+                        >
+                          <div className="cursor-pointer select-none flex items-center" onClick={table.getColumn('monthlySearchVolume')?.getToggleSortingHandler()}>
+                            Monthly Search Volume
+                            <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
+                          </div>
+                        </th>
+                        {/* Scrollable columns */}
+                        {table.getFlatHeaders().slice(4).map(header => (
+                          <th
+                            key={header.id}
+                            scope="col"
+                            className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap bg-gray-50"
                           >
-                            <div className="truncate">
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </div>
-                          </td>
+                            {header.isPlaceholder ? null : (
+                              <div
+                                className={header.column.getCanSort() ? 'cursor-pointer select-none flex items-center' : ''}
+                                onClick={header.column.getToggleSortingHandler()}
+                              >
+                                {flexRender(header.column.columnDef.header, header.getContext())}
+                                {header.column.getCanSort() && (
+                                  <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
+                                )}
+                              </div>
+                            )}
+                          </th>
                         ))}
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={table.getAllColumns().length} className="px-3 sm:px-6 py-4 text-center text-sm text-gray-500">
-                        {searchTerm || activeFilters.length > 0 ? 'No results match your search criteria' : 'No data available'}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {table.getRowModel().rows.length > 0 ? (
+                        table.getRowModel().rows.map(row => (
+                          <tr key={row.id} className="hover:bg-gray-50">
+                            {/* Fixed columns */}
+                            <td
+                              className="px-3 sm:px-6 py-2 text-sm text-gray-500 truncate sticky left-0 bg-white border-r border-gray-200"
+                              style={{ minWidth: '200px' }}
+                            >
+                              <div className="truncate">
+                                {flexRender(row.getVisibleCells()[1].column.columnDef.cell, row.getVisibleCells()[1].getContext())}
+                              </div>
+                            </td>
+                            <td
+                              className="px-3 sm:px-6 py-2 text-sm text-gray-500 truncate sticky left-[200px] bg-white border-r border-gray-200"
+                              style={{ minWidth: '150px' }}
+                            >
+                              <div className="truncate">
+                                {flexRender(row.getVisibleCells()[2].column.columnDef.cell, row.getVisibleCells()[2].getContext())}
+                              </div>
+                            </td>
+                            <td
+                              className="px-3 sm:px-6 py-2 text-sm text-gray-500 truncate sticky left-[350px] bg-white border-r border-gray-200"
+                              style={{ minWidth: '150px' }}
+                            >
+                              <div className="truncate">
+                                {flexRender(row.getVisibleCells()[3].column.columnDef.cell, row.getVisibleCells()[3].getContext())}
+                              </div>
+                            </td>
+                            {/* Scrollable columns */}
+                            {row.getVisibleCells().slice(4).map(cell => (
+                              <td
+                                key={cell.id}
+                                className="px-3 sm:px-6 py-2 text-sm text-gray-500 truncate"
+                              >
+                                <div className="truncate">
+                                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                </div>
+                              </td>
+                            ))}
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={table.getAllColumns().length} className="px-3 sm:px-6 py-4 text-center text-sm text-gray-500">
+                            {searchTerm || activeFilters.length > 0 ? 'No results match your search criteria' : 'No data available'}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
 
