@@ -85,7 +85,7 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
             <input
               id="url"
               type="text"
-              className={`w-full px-3 py-2 border rounded-md ${errors.url ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-3 py-2 border rounded-md text-gray-900 ${errors.url ? 'border-red-500' : 'border-gray-300'}`}
               placeholder="https://example.com/page"
               {...register('url', {
                 required: 'URL is required',
@@ -107,7 +107,7 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
             <input
               id="keyword"
               type="text"
-              className={`w-full px-3 py-2 border rounded-md ${errors.keyword ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-3 py-2 border rounded-md text-gray-900 ${errors.keyword ? 'border-red-500' : 'border-gray-300'}`}
               placeholder="example keyword"
               {...register('keyword', { required: 'Keyword is required' })}
             />
@@ -123,7 +123,7 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
             <input
               id="monthlySearchVolume"
               type="number"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
               placeholder="e.g., 1000"
               min="0"
               {...register('monthlySearchVolume')}
@@ -137,7 +137,7 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
             <input
               id="currentRanking"
               type="number"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
               placeholder="e.g., 5"
               min="1"
               {...register('currentRanking')}
@@ -150,7 +150,7 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
             </label>
             <select
               id="status"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
               {...register('status')}
             >
               <option value="">None</option>
@@ -165,7 +165,7 @@ const AddUrlForm: React.FC<AddUrlFormProps> = ({ onAdd, onClose }) => {
             </label>
             <textarea
               id="note"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-900"
               placeholder="Add any notes about this URL/keyword"
               rows={3}
               {...register('note')}
