@@ -846,8 +846,8 @@ const RankingTable: React.FC = () => {
               <button
                 onClick={() => toggleFilter('top10')}
                 className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top10')
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-green-600 dark:bg-green-900/80 text-white'
+                  : 'bg-gray-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
               >
                 <Filter className="h-3 w-3 mr-1" />
@@ -856,8 +856,8 @@ const RankingTable: React.FC = () => {
               <button
                 onClick={() => toggleFilter('top20')}
                 className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top20')
-                  ? 'bg-yellow-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-yellow-600 dark:bg-yellow-900/80 text-white'
+                  : 'bg-gray-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
               >
                 <Filter className="h-3 w-3 mr-1" />
@@ -866,8 +866,8 @@ const RankingTable: React.FC = () => {
               <button
                 onClick={() => toggleFilter('top30')}
                 className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top30')
-                  ? 'bg-red-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-red-600 dark:bg-red-900/80 text-white'
+                  : 'bg-gray-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
               >
                 <Filter className="h-3 w-3 mr-1" />
@@ -876,8 +876,8 @@ const RankingTable: React.FC = () => {
               <button
                 onClick={() => toggleFilter('below30')}
                 className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('below30')
-                  ? 'bg-gray-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-gray-600 dark:bg-gray-800/80 text-white'
+                  : 'bg-gray-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                   }`}
               >
                 <Filter className="h-3 w-3 mr-1" />
@@ -886,7 +886,7 @@ const RankingTable: React.FC = () => {
               {(activeFilters.length > 0 || searchTerm) && (
                 <button
                   onClick={clearFilters}
-                  className="px-3 py-1 text-sm rounded-md bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-200 hover:bg-red-200 dark:hover:bg-red-800 flex items-center"
+                  className="px-3 py-1 text-sm rounded-md bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-200 hover:bg-red-200 dark:hover:bg-red-800/80 flex items-center"
                 >
                   <X className="h-3 w-3 mr-1" />
                   Clear Filters
@@ -895,12 +895,12 @@ const RankingTable: React.FC = () => {
             </div>
             <div className="relative w-full sm:w-64">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400" />
+                <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
               </div>
               <input
                 type="text"
                 placeholder="Search URLs or keywords..."
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800/80 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -912,34 +912,34 @@ const RankingTable: React.FC = () => {
               <div className="inline-block min-w-full align-middle">
                 <div className="relative">
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
-                    <thead className="bg-gray-50 dark:bg-gray-800">
+                    <thead className="bg-gray-50 dark:bg-gray-900/90 sticky top-0 z-30">
                       <tr>
                         {/* Fixed columns */}
                         <th
-                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap md:sticky left-0 z-20 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
+                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap md:sticky left-0 z-40 bg-gray-50 dark:bg-gray-900/90 border-r border-gray-200 dark:border-gray-700"
                           style={{ minWidth: '200px' }}
                         >
                           <div className="cursor-pointer select-none flex items-center" onClick={table.getColumn('url')?.getToggleSortingHandler()}>
                             URL
-                            <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
+                            <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400 dark:text-gray-500" />
                           </div>
                         </th>
                         <th
-                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap md:sticky left-[200px] z-20 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
+                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap md:sticky left-[200px] z-40 bg-gray-50 dark:bg-gray-900/90 border-r border-gray-200 dark:border-gray-700"
                           style={{ minWidth: '150px' }}
                         >
                           <div className="cursor-pointer select-none flex items-center" onClick={table.getColumn('keyword')?.getToggleSortingHandler()}>
                             Keyword
-                            <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
+                            <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400 dark:text-gray-500" />
                           </div>
                         </th>
                         <th
-                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap md:sticky left-[350px] z-20 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
+                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap md:sticky left-[350px] z-40 bg-gray-50 dark:bg-gray-900/90 border-r border-gray-200 dark:border-gray-700"
                           style={{ minWidth: '150px' }}
                         >
                           <div className="cursor-pointer select-none flex items-center" onClick={table.getColumn('monthlySearchVolume')?.getToggleSortingHandler()}>
                             Monthly Search Volume
-                            <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
+                            <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400 dark:text-gray-500" />
                           </div>
                         </th>
                         {/* Scrollable columns */}
@@ -947,7 +947,7 @@ const RankingTable: React.FC = () => {
                           <th
                             key={header.id}
                             scope="col"
-                            className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap bg-gray-50 dark:bg-gray-800"
+                            className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap bg-gray-50 dark:bg-gray-900/90 sticky top-0"
                           >
                             {header.isPlaceholder ? null : (
                               <div
@@ -956,7 +956,7 @@ const RankingTable: React.FC = () => {
                               >
                                 {flexRender(header.column.columnDef.header, header.getContext())}
                                 {header.column.getCanSort() && (
-                                  <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400" />
+                                  <ArrowUpDown className="ml-1 h-3 w-3 text-gray-400 dark:text-gray-500" />
                                 )}
                               </div>
                             )}
@@ -967,7 +967,7 @@ const RankingTable: React.FC = () => {
                     <tbody className={`${isDark ? 'bg-gray-900' : 'bg-white'} divide-y divide-gray-200 dark:divide-gray-700`}>
                       {table.getRowModel().rows.length > 0 ? (
                         table.getRowModel().rows.map(row => (
-                          <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <tr key={row.id} className="hover:bg-gray-50/5 dark:hover:bg-gray-800/50">
                             {/* Fixed columns */}
                             <td
                               className={`px-3 sm:px-6 py-2 text-sm text-gray-500 dark:text-gray-400 truncate md:sticky left-0 ${isDark ? 'bg-gray-900' : 'bg-white'} border-r border-gray-200 dark:border-gray-700`}
