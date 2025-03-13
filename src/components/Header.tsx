@@ -13,7 +13,7 @@ const Header: React.FC<HeaderProps> = ({ activeView, setActiveView }) => {
         <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600">
-              SEO Rank Tracker Stahl
+              SEO Rank Tracker
             </h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1">
               Track your keyword rankings over time
