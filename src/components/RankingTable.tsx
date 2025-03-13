@@ -916,7 +916,7 @@ const RankingTable: React.FC = () => {
                       <tr>
                         {/* Fixed columns */}
                         <th
-                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap sticky left-0 z-20 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
+                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap md:sticky left-0 z-20 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
                           style={{ minWidth: '200px' }}
                         >
                           <div className="cursor-pointer select-none flex items-center" onClick={table.getColumn('url')?.getToggleSortingHandler()}>
@@ -925,7 +925,7 @@ const RankingTable: React.FC = () => {
                           </div>
                         </th>
                         <th
-                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap sticky left-[200px] z-20 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
+                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap md:sticky left-[200px] z-20 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
                           style={{ minWidth: '150px' }}
                         >
                           <div className="cursor-pointer select-none flex items-center" onClick={table.getColumn('keyword')?.getToggleSortingHandler()}>
@@ -934,7 +934,7 @@ const RankingTable: React.FC = () => {
                           </div>
                         </th>
                         <th
-                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap sticky left-[350px] z-20 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
+                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap md:sticky left-[350px] z-20 bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
                           style={{ minWidth: '150px' }}
                         >
                           <div className="cursor-pointer select-none flex items-center" onClick={table.getColumn('monthlySearchVolume')?.getToggleSortingHandler()}>
@@ -970,7 +970,7 @@ const RankingTable: React.FC = () => {
                           <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                             {/* Fixed columns */}
                             <td
-                              className={`px-3 sm:px-6 py-2 text-sm text-gray-500 dark:text-gray-400 truncate sticky left-0 ${isDark ? 'bg-gray-900' : 'bg-white'} border-r border-gray-200 dark:border-gray-700`}
+                              className={`px-3 sm:px-6 py-2 text-sm text-gray-500 dark:text-gray-400 truncate md:sticky left-0 ${isDark ? 'bg-gray-900' : 'bg-white'} border-r border-gray-200 dark:border-gray-700`}
                               style={{ minWidth: '200px' }}
                             >
                               <div className="truncate">
@@ -978,7 +978,7 @@ const RankingTable: React.FC = () => {
                               </div>
                             </td>
                             <td
-                              className={`px-3 sm:px-6 py-2 text-sm text-gray-500 dark:text-gray-400 truncate sticky left-[200px] ${isDark ? 'bg-gray-900' : 'bg-white'} border-r border-gray-200 dark:border-gray-700`}
+                              className={`px-3 sm:px-6 py-2 text-sm text-gray-500 dark:text-gray-400 truncate md:sticky left-[200px] ${isDark ? 'bg-gray-900' : 'bg-white'} border-r border-gray-200 dark:border-gray-700`}
                               style={{ minWidth: '150px' }}
                             >
                               <div className="truncate">
@@ -986,7 +986,7 @@ const RankingTable: React.FC = () => {
                               </div>
                             </td>
                             <td
-                              className={`px-3 sm:px-6 py-2 text-sm text-gray-500 dark:text-gray-400 truncate sticky left-[350px] ${isDark ? 'bg-gray-900' : 'bg-white'} border-r border-gray-200 dark:border-gray-700`}
+                              className={`px-3 sm:px-6 py-2 text-sm text-gray-500 dark:text-gray-400 truncate md:sticky left-[350px] ${isDark ? 'bg-gray-900' : 'bg-white'} border-r border-gray-200 dark:border-gray-700`}
                               style={{ minWidth: '150px' }}
                             >
                               <div className="truncate">
