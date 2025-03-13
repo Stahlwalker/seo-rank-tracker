@@ -234,12 +234,12 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen dark-gradient">
       <Header activeView={activeView} setActiveView={setActiveView} />
 
       <main>
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
+          <div className="px-4 py-6 sm:px-0 space-y-6">
             <ActionBar
               onRefresh={handleRefreshRankings}
               onExport={handleExport}
@@ -250,12 +250,14 @@ function App() {
             />
 
             {error && (
-              <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+              <div className="mb-4 p-4 bg-red-900/50 border border-red-700 text-red-200 rounded">
                 {error}
               </div>
             )}
 
-            <Outlet context={{ data, setData, isLoading }} />
+            <div className="content-area rounded-lg p-4">
+              <Outlet context={{ data, setData, isLoading }} />
+            </div>
           </div>
         </div>
       </main>
