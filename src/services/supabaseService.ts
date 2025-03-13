@@ -9,7 +9,7 @@ const toDbUrlKeywordPair = (pair: Partial<UrlKeywordPair>) => {
   return {
     url: rest.url,
     keyword: rest.keyword,
-    monthly_search_volume: rest.monthlySearchVolume || null,
+    monthly_search_volume: typeof rest.monthlySearchVolume === 'number' ? rest.monthlySearchVolume : null,
     current_ranking: rest.currentRanking,
     note: rest.note || null,
     status: rest.status || null,
@@ -23,7 +23,7 @@ const fromDbUrlKeywordPair = (dbPair: Database['public']['Tables']['url_keyword_
     id: dbPair.id,
     url: dbPair.url,
     keyword: dbPair.keyword,
-    monthlySearchVolume: dbPair.monthly_search_volume || undefined,
+    monthlySearchVolume: typeof dbPair.monthly_search_volume === 'number' ? dbPair.monthly_search_volume : undefined,
     currentRanking: dbPair.current_ranking,
     rankingHistory,
     note: dbPair.note || undefined,

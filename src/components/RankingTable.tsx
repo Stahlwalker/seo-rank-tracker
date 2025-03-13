@@ -159,8 +159,8 @@ const RankingTable: React.FC = () => {
 
       if (editingCell.field === 'monthlySearchVolume') {
         const value = parseInt(editingCell.value);
-        if (isNaN(value)) {
-          setError('Monthly search volume must be a number');
+        if (isNaN(value) || value < 0) {
+          setError('Monthly search volume must be a non-negative number');
           return;
         }
         updatedItem.monthlySearchVolume = value;
@@ -456,11 +456,11 @@ const RankingTable: React.FC = () => {
         ) : (
           <div className="flex items-center group">
             <span className="font-medium">
-              {value !== undefined ? value.toLocaleString() : '-'}
+              {value !== undefined && value !== null ? value.toLocaleString() : '-'}
             </span>
             <button
               type="button"
-              onClick={() => handleStartEditing(info.row.original.id, 'monthlySearchVolume', value?.toString() || '')}
+              onClick={() => handleStartEditing(info.row.original.id, 'monthlySearchVolume', value?.toString() || '0')}
               className="p-1 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
             >
               <Edit className="h-3 w-3" />
