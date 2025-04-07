@@ -259,6 +259,17 @@ function App() {
                   size="sm"
                   onClick={async () => {
                     try {
+                      // Check if user is authenticated
+                      const { data: { session } } = await supabase.auth.getSession();
+                      if (!session) {
+                        toast({
+                          title: "Authentication Required",
+                          description: "Please log in to create a shared view.",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
                       if (!data || data.length === 0) {
                         toast({
                           title: "Error",
