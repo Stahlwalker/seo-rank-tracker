@@ -13,9 +13,9 @@ import {
 import { Line } from 'react-chartjs-2';
 import { UrlKeywordPair } from '../types';
 import { format } from 'date-fns';
-import { Search, ArrowUpDown, Check, Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
-import { useOutletContext } from 'react-router-dom';
+import { Search, ArrowUpDown, Check, Plus, X, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { deleteUrlKeywordPair } from '../services/supabaseService';
 
 ChartJS.register(
   CategoryScale,
@@ -27,14 +27,14 @@ ChartJS.register(
   Legend
 );
 
-interface RouteContext {
+interface Props {
   data: UrlKeywordPair[];
-  setData: React.Dispatch<React.SetStateAction<UrlKeywordPair[]>>;
+  setData?: React.Dispatch<React.SetStateAction<UrlKeywordPair[]>>;
   isLoading: boolean;
+  isAdmin: boolean;
 }
 
-const RankingChart: React.FC = () => {
-  const { data } = useOutletContext<RouteContext>();
+const RankingChart: React.FC<Props> = ({ data, setData, isLoading, isAdmin }) => {
   const { isDark } = useTheme();
   const [selectedUrls, setSelectedUrls] = useState<string[]>(
     data.length > 0 ? [data[0].id] : []
@@ -43,6 +43,7 @@ const RankingChart: React.FC = () => {
   const [sortBy, setSortBy] = useState<'url' | 'keyword' | 'volume'>('url');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [showSelectionPanel, setShowSelectionPanel] = useState(true);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
   // Update selected URLs when data changes
   useEffect(() => {
@@ -226,6 +227,30 @@ const RankingChart: React.FC = () => {
     }
   };
 
+  const handleDeleteUrl = async (id: string) => {
+    if (!isAdmin) return;
+
+    setDeletingIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+
+    try {
+      await deleteUrlKeywordPair(id);
+      // Remove the deleted URL from selected URLs
+      setSelectedUrls(prev => prev.filter(urlId => urlId !== id));
+    } catch (error) {
+      console.error('Error deleting URL:', error);
+    } finally {
+      setDeletingIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
   return (
     <div className={`${isDark ? 'bg-gray-900' : 'bg-white'} rounded-lg shadow p-6`}>
       <div className={`transition-all duration-300 ${showSelectionPanel ? 'mb-6' : 'mb-2'}`}>
@@ -277,8 +302,8 @@ const RankingChart: React.FC = () => {
                   type="text"
                   placeholder="Search URLs or keywords..."
                   className={`pl-10 pr-4 py-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDark
-                      ? 'bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400'
-                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                    ? 'bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400'
+                    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
                     }`}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -330,10 +355,10 @@ const RankingChart: React.FC = () => {
                           <div className="flex items-center">
                             <div
                               className={`w-4 h-4 mr-2 rounded border flex items-center justify-center cursor-pointer ${selectedUrls.includes(item.id)
-                                  ? 'bg-blue-600 border-blue-600'
-                                  : isDark
-                                    ? 'border-gray-600 hover:border-blue-400'
-                                    : 'border-gray-300 hover:border-blue-400'
+                                ? 'bg-blue-600 border-blue-600'
+                                : isDark
+                                  ? 'border-gray-600 hover:border-blue-400'
+                                  : 'border-gray-300 hover:border-blue-400'
                                 }`}
                               onClick={() => toggleUrlSelection(item.id)}
                             >
@@ -354,10 +379,10 @@ const RankingChart: React.FC = () => {
                             <button
                               onClick={() => selectSingleUrl(item.id)}
                               className={`px-2 py-1 text-xs rounded ${selectedUrls.includes(item.id) && selectedUrls.length === 1
-                                  ? 'bg-blue-600 text-white'
-                                  : isDark
-                                    ? 'bg-blue-900/50 text-blue-300 hover:bg-blue-800'
-                                    : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                ? 'bg-blue-600 text-white'
+                                : isDark
+                                  ? 'bg-blue-900/50 text-blue-300 hover:bg-blue-800'
+                                  : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
                                 }`}
                             >
                               View Only
@@ -365,16 +390,24 @@ const RankingChart: React.FC = () => {
                             <button
                               onClick={() => toggleUrlSelection(item.id)}
                               className={`px-2 py-1 text-xs rounded ${selectedUrls.includes(item.id)
-                                  ? isDark
-                                    ? 'bg-red-900/50 text-red-300 hover:bg-red-800'
-                                    : 'bg-red-100 text-red-800 hover:bg-red-200'
-                                  : isDark
-                                    ? 'bg-green-900/50 text-green-300 hover:bg-green-800'
-                                    : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                ? isDark
+                                  ? 'bg-red-900/50 text-red-300 hover:bg-red-800'
+                                  : 'bg-red-100 text-red-800 hover:bg-red-200'
+                                : isDark
+                                  ? 'bg-green-900/50 text-green-300 hover:bg-green-800'
+                                  : 'bg-green-100 text-green-800 hover:bg-green-200'
                                 }`}
                             >
                               {selectedUrls.includes(item.id) ? 'Remove' : 'Add'}
                             </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDeleteUrl(item.id)}
+                                className="px-2 py-1 text-xs rounded bg-red-900/50 text-red-300 hover:bg-red-800"
+                              >
+                                Delete
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -399,8 +432,8 @@ const RankingChart: React.FC = () => {
                     <div
                       key={item.id}
                       className={`px-3 py-1 text-sm rounded-full flex items-center ${isDark
-                          ? 'bg-blue-900/50 text-blue-300 border border-blue-700'
-                          : 'bg-blue-100 text-blue-800 border border-blue-300'
+                        ? 'bg-blue-900/50 text-blue-300 border border-blue-700'
+                        : 'bg-blue-100 text-blue-800 border border-blue-300'
                         }`}
                     >
                       {item.url.replace(/^https?:\/\//, '').substring(0, 20)}
@@ -427,8 +460,8 @@ const RankingChart: React.FC = () => {
         </div>
       ) : (
         <div className={`flex items-center justify-center h-[500px] rounded-lg border ${isDark
-            ? 'bg-gray-800 border-gray-700 text-gray-400'
-            : 'bg-gray-50 border-gray-200 text-gray-500'
+          ? 'bg-gray-800 border-gray-700 text-gray-400'
+          : 'bg-gray-50 border-gray-200 text-gray-500'
           }`}>
           <p>Select at least one URL to display the chart</p>
         </div>

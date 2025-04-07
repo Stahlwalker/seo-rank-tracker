@@ -1,77 +1,77 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface AuthContextType {
-  session: Session | null;
-  user: User | null;
-  loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string) => Promise<{ error: any, data: any }>;
-  signOut: () => Promise<void>;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => void;
+  error: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    // Check for existing auth state
+    const storedAuth = localStorage.getItem('auth');
+    if (storedAuth) {
+      const { isAuthenticated: storedIsAuthenticated, isAdmin: storedIsAdmin } = JSON.parse(storedAuth);
+      setIsAuthenticated(storedIsAuthenticated);
+      setIsAdmin(storedIsAdmin);
+    }
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
+  const login = async (email: string, password: string) => {
+    try {
+      setError(null);
+
+      // Check if the credentials match the admin credentials
+      const isAdminUser = email === import.meta.env.VITE_ADMIN_EMAIL &&
+        password === import.meta.env.VITE_ADMIN_PASSWORD;
+
+      if (!isAdminUser) {
+        setError('Invalid email or password');
+        return false;
+      }
+
+      // Set authentication state
+      setIsAuthenticated(true);
+      setIsAdmin(true);
+
+      // Store auth state
+      localStorage.setItem('auth', JSON.stringify({
+        isAuthenticated: true,
+        isAdmin: true
+      }));
+
+      return true;
+    } catch (err) {
+      setError('An error occurred during login');
+      return false;
+    }
   };
 
-  const signUp = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    return { data, error };
-  };
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-  };
-
-  const value = {
-    session,
-    user,
-    loading,
-    signIn,
-    signUp,
-    signOut
+  const logout = () => {
+    setIsAuthenticated(false);
+    setIsAdmin(false);
+    localStorage.removeItem('auth');
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ isAuthenticated, isAdmin, login, logout, error }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}

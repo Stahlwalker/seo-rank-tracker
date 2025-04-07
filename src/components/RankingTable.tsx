@@ -14,13 +14,13 @@ import { UrlKeywordPair } from '../types';
 import { format } from 'date-fns';
 import GoogleSearchModal from './GoogleSearchModal';
 import { deleteUrlKeywordPair, updateUrlKeywordPair, bulkAddRankingHistory, addUrlKeywordPair } from '../services/supabaseService';
-import { useOutletContext } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 
-interface RouteContext {
+interface Props {
   data: UrlKeywordPair[];
-  setData: React.Dispatch<React.SetStateAction<UrlKeywordPair[]>>;
+  setData?: React.Dispatch<React.SetStateAction<UrlKeywordPair[]>>;
   isLoading: boolean;
+  isAdmin: boolean;
 }
 
 interface EditingCell {
@@ -30,24 +30,31 @@ interface EditingCell {
   month?: string;
 }
 
-const RankingTable: React.FC = () => {
-  const { data, setData, isLoading } = useOutletContext<RouteContext>();
+const columnHelper = createColumnHelper<UrlKeywordPair>();
+
+const RankingTable: React.FC<Props> = ({ data, setData, isLoading, isAdmin }) => {
   const { isDark } = useTheme();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [noteText, setNoteText] = useState<string>('');
-  const [selectedPair, setSelectedPair] = useState<UrlKeywordPair | null>(null);
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
-  const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedPair, setSelectedPair] = useState<UrlKeywordPair | null>(null);
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [isAddingNew, setIsAddingNew] = useState(false);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [newPair, setNewPair] = useState<Partial<UrlKeywordPair>>({
+    url: '',
+    keyword: '',
+    monthlySearchVolume: undefined,
+    currentRanking: null,
+    note: '',
+    status: '',
+  });
   const [recentlyDeleted, setRecentlyDeleted] = useState<UrlKeywordPair[]>([]);
   const noteInputRef = useRef<HTMLTextAreaElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
-
-  const columnHelper = createColumnHelper<UrlKeywordPair>();
 
   // Generate an array of month names from August 2023 to current month
   const generateMonthColumns = () => {
@@ -67,6 +74,8 @@ const RankingTable: React.FC = () => {
   const monthColumns = generateMonthColumns();
 
   const handleRestore = async (item: UrlKeywordPair) => {
+    if (!setData) return;
+
     try {
       const restoredItem = await addUrlKeywordPair(item);
       if (restoredItem) {
@@ -81,16 +90,13 @@ const RankingTable: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (!setData) return;
+
     try {
       setDeletingIds(prev => new Set([...prev, id]));
       setError(null);
 
-      const itemToDelete = data.find(item => item.id === id);
-      if (!itemToDelete) return;
-
       await deleteUrlKeywordPair(id);
-
-      setRecentlyDeleted(prev => [itemToDelete, ...prev].slice(0, 5));
       setData(prevData => prevData.filter(item => item.id !== id));
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to delete item');
@@ -105,6 +111,8 @@ const RankingTable: React.FC = () => {
   };
 
   const handleUpdateNote = async (id: string, note: string | undefined) => {
+    if (!setData) return;
+
     try {
       const item = data.find(item => item.id === id);
       if (!item) return;
@@ -124,6 +132,8 @@ const RankingTable: React.FC = () => {
   };
 
   const handleUpdateStatus = async (id: string, status: 'Testing' | 'Needs Improvement' | '') => {
+    if (!setData) return;
+
     try {
       const item = data.find(item => item.id === id);
       if (!item) return;
@@ -151,7 +161,7 @@ const RankingTable: React.FC = () => {
   };
 
   const handleSaveEditing = async () => {
-    if (!editingCell) return;
+    if (!editingCell || !setData) return;
 
     try {
       const item = data.find((item: UrlKeywordPair) => item.id === editingCell.id);
@@ -200,32 +210,28 @@ const RankingTable: React.FC = () => {
 
       const result = await updateUrlKeywordPair(updatedItem);
       if (result) {
-        setData((prevData: UrlKeywordPair[]) => prevData.map((i: UrlKeywordPair) =>
-          i.id === editingCell.id ? result : i
+        setData(prevData => prevData.map(item =>
+          item.id === editingCell.id ? result : item
         ));
-        setEditingCell(null);
-        setError(null);
       }
+      setEditingCell(null);
+      setError(null);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to update field');
-      console.error('Error updating field:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update item');
+      console.error('Error updating item:', error);
     }
   };
 
   const handleBulkDelete = async () => {
+    if (!setData) return;
+
     try {
       const selectedIds = Array.from(selectedRows);
       setDeletingIds(new Set(selectedIds));
       setError(null);
 
-      const itemsToDelete = data.filter(item => selectedIds.includes(item.id));
-
-      for (const id of selectedIds) {
-        await deleteUrlKeywordPair(id);
-      }
-
-      setRecentlyDeleted(prev => [...itemsToDelete, ...prev].slice(0, 5));
-      setData(prevData => prevData.filter(item => !selectedIds.includes(item.id)));
+      await Promise.all(selectedIds.map(id => deleteUrlKeywordPair(id)));
+      setData(prevData => prevData.filter(item => !selectedRows.has(item.id)));
       setSelectedRows(new Set());
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to delete selected items');
@@ -235,10 +241,132 @@ const RankingTable: React.FC = () => {
     }
   };
 
+  const handleAddNew = async () => {
+    if (!setData) return;
+
+    try {
+      if (!newPair.url || !newPair.keyword) {
+        setError('URL and keyword are required');
+        return;
+      }
+
+      const result = await addUrlKeywordPair(newPair as UrlKeywordPair);
+      if (result) {
+        setData(prevData => [result, ...prevData]);
+        setIsAddingNew(false);
+        setNewPair({
+          url: '',
+          keyword: '',
+          monthlySearchVolume: undefined,
+          currentRanking: null,
+          note: '',
+          status: '',
+        });
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to add new item');
+      console.error('Error adding new item:', error);
+    }
+  };
+
+  const handleUpdateCell = async (id: string, field: string, value: string, month?: string) => {
+    if (!setData) return;
+
+    try {
+      const item = data.find(item => item.id === id);
+      if (!item) return;
+
+      let updatedItem: UrlKeywordPair;
+      if (field === 'monthlySearchVolume') {
+        updatedItem = {
+          ...item,
+          monthlySearchVolume: parseInt(value) || undefined,
+        };
+      } else if (month) {
+        // Update ranking history
+        const updatedHistory = [...item.rankingHistory];
+        const historyIndex = updatedHistory.findIndex(h => h.month === month);
+        const position = parseInt(value);
+        if (historyIndex >= 0) {
+          updatedHistory[historyIndex] = {
+            ...updatedHistory[historyIndex],
+            position: isNaN(position) ? null : position,
+          };
+        } else {
+          updatedHistory.push({
+            month,
+            position: isNaN(position) ? null : position,
+          });
+        }
+        updatedItem = {
+          ...item,
+          rankingHistory: updatedHistory,
+        };
+      } else {
+        updatedItem = {
+          ...item,
+          [field]: value,
+        };
+      }
+
+      const result = await updateUrlKeywordPair(updatedItem);
+      if (result) {
+        setData(prevData => prevData.map(item =>
+          item.id === id ? result : item
+        ));
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to update item');
+      console.error('Error updating item:', error);
+    }
+  };
+
+  const handleUpdateRanking = async (id: string, ranking: number) => {
+    if (!setData) return;
+
+    try {
+      const item = data.find(item => item.id === id);
+      if (!item) return;
+
+      const updatedItem = {
+        ...item,
+        currentRanking: ranking,
+        lastUpdated: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+      };
+
+      const result = await updateUrlKeywordPair(updatedItem);
+      if (result) {
+        setData(prevData => prevData.map(item =>
+          item.id === id ? result : item
+        ));
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to update ranking');
+      console.error('Error updating ranking:', error);
+    }
+  };
+
+  const handleUndoDelete = async (item: UrlKeywordPair) => {
+    if (!setData) return;
+
+    try {
+      const result = await addUrlKeywordPair(item);
+      if (result) {
+        setData(prevData => [result, ...prevData]);
+        setRecentlyDeleted(prev => prev.filter(i => i.id !== item.id));
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to restore item');
+      console.error('Error restoring item:', error);
+    }
+  };
+
   const columns = [
     columnHelper.display({
       id: 'select',
       header: ({ table }) => {
+        if (!isAdmin) return null;
+
         const filteredRows = table.getFilteredRowModel().rows;
         const allSelected = filteredRows.length > 0 && filteredRows.every(row => selectedRows.has(row.original.id));
         const someSelected = filteredRows.some(row => selectedRows.has(row.original.id)) && !allSelected;
@@ -274,29 +402,34 @@ const RankingTable: React.FC = () => {
           </div>
         );
       },
-      cell: ({ row }) => (
-        <div className="px-1">
-          <div
-            className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer ${selectedRows.has(row.original.id)
-              ? 'bg-blue-600 border-blue-600'
-              : 'border-gray-300 hover:border-blue-400'
-              }`}
-            onClick={() => {
-              setSelectedRows(prev => {
-                const next = new Set(prev);
-                if (next.has(row.original.id)) {
-                  next.delete(row.original.id);
-                } else {
-                  next.add(row.original.id);
-                }
-                return next;
-              });
-            }}
-          >
-            {selectedRows.has(row.original.id) && <Check className="h-3 w-3 text-white" />}
+      cell: info => {
+        if (!isAdmin) return null;
+
+        const isSelected = selectedRows.has(info.row.original.id);
+        return (
+          <div className="px-1">
+            <div
+              className={`w-4 h-4 rounded border flex items-center justify-center cursor-pointer ${isSelected
+                ? 'bg-blue-600 border-blue-600'
+                : 'border-gray-300 hover:border-blue-400'
+                }`}
+              onClick={() => {
+                setSelectedRows(prev => {
+                  const next = new Set(prev);
+                  if (isSelected) {
+                    next.delete(info.row.original.id);
+                  } else {
+                    next.add(info.row.original.id);
+                  }
+                  return next;
+                });
+              }}
+            >
+              {isSelected && <Check className="h-3 w-3 text-white" />}
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     }),
     columnHelper.accessor('url', {
       header: 'URL',
@@ -615,7 +748,7 @@ const RankingTable: React.FC = () => {
         const id = info.row.original.id;
         const value = info.getValue();
 
-        if (editingNoteId === id) {
+        if (editingCell?.id === id) {
           return (
             <div className="flex items-center">
               <textarea
@@ -631,7 +764,6 @@ const RankingTable: React.FC = () => {
                   onClick={() => {
                     const newNote = noteInputRef.current?.value || undefined;
                     handleUpdateNote(id, newNote);
-                    setEditingNoteId(null);
                   }}
                   className="text-green-500 hover:text-green-300 p-1"
                   title="Save"
@@ -639,7 +771,7 @@ const RankingTable: React.FC = () => {
                   <Save className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => setEditingNoteId(null)}
+                  onClick={() => setEditingCell(null)}
                   className="text-red-500 hover:text-red-300 p-1"
                   title="Cancel"
                 >
@@ -661,7 +793,7 @@ const RankingTable: React.FC = () => {
             </div>
             <button
               onClick={() => {
-                setEditingNoteId(id);
+                setEditingCell({ id, field: 'note', value: value || '', month: undefined });
               }}
               className="text-blue-500 hover:text-blue-300 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
               title="Edit note"
@@ -795,7 +927,7 @@ const RankingTable: React.FC = () => {
 
       <div className="bg-gray-900 rounded-lg shadow">
         <div className="p-4 sm:p-6 space-y-4">
-          {recentlyDeleted.length > 0 && (
+          {recentlyDeleted.length > 0 && isAdmin && (
             <div className="bg-blue-900/50 border border-blue-700 rounded-md p-4 flex items-center justify-between">
               <div className="flex items-center space-x-2 text-blue-200">
                 <Undo2 className="h-4 w-4" />
@@ -824,9 +956,9 @@ const RankingTable: React.FC = () => {
 
           <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between sm:items-center">
             <div className="flex flex-wrap items-center gap-2">
-              {selectedRows.size > 0 && (
+              {selectedRows.size > 0 && isAdmin && (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                  <span className="text-sm text-gray-400">
                     {selectedRows.size} {selectedRows.size === 1 ? 'item' : 'items'} selected
                   </span>
                   <button
@@ -1025,6 +1157,7 @@ const RankingTable: React.FC = () => {
                 urlKeywordPair={selectedPair}
                 onClose={() => setSelectedPair(null)}
                 onUpdateRanking={(id, ranking) => {
+                  if (!setData) return;
                   setData(prevData => prevData.map(item =>
                     item.id === id
                       ? { ...item, currentRanking: ranking, lastUpdated: format(new Date(), 'yyyy-MM-dd HH:mm:ss') }

@@ -1,6 +1,6 @@
 export interface RankingData {
   month: string;
-  position: number;
+  position: number | null;
 }
 
 export interface UrlKeywordPair {

@@ -3,14 +3,16 @@ import { Plus, Upload, Download, RefreshCw, Calendar } from 'lucide-react';
 import AddUrlForm from './AddUrlForm';
 import ImportModal from './ImportModal';
 import { UrlKeywordPair } from '../types';
+import GoogleSearchModal from './GoogleSearchModal';
 
 interface ActionBarProps {
-  onRefresh: () => void;
+  onRefresh: () => Promise<void>;
   onExport: () => void;
-  onMonthlyUpdate: () => void;
+  onMonthlyUpdate: () => Promise<void>;
   data: UrlKeywordPair[];
-  onAddUrl: (newPair: UrlKeywordPair) => void;
-  onImport: (data: UrlKeywordPair[]) => void;
+  onAddUrl: (newPair: UrlKeywordPair) => Promise<void>;
+  onImport: (importedData: UrlKeywordPair[]) => Promise<void>;
+  isAdmin: boolean;
 }
 
 const ActionBar: React.FC<ActionBarProps> = ({
@@ -19,10 +21,57 @@ const ActionBar: React.FC<ActionBarProps> = ({
   onMonthlyUpdate,
   data,
   onAddUrl,
-  onImport
+  onImport,
+  isAdmin
 }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  const handleRefresh = async () => {
+    if (!isAdmin) return;
+
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleMonthlyUpdate = async () => {
+    if (!isAdmin) return;
+
+    setIsUpdating(true);
+    try {
+      await onMonthlyUpdate();
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAdmin) return;
+
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const importedData = JSON.parse(content) as UrlKeywordPair[];
+        onImport(importedData);
+        setImportError(null);
+      } catch (error) {
+        console.error('Error parsing imported file:', error);
+        setImportError('Invalid file format. Please import a valid JSON file.');
+      }
+    };
+    reader.readAsText(file);
+  };
 
   return (
     <div className="dark-card rounded-lg shadow-lg border">
@@ -47,14 +96,33 @@ const ActionBar: React.FC<ActionBarProps> = ({
           </div>
 
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            <button
-              onClick={onRefresh}
-              className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-md hover:from-indigo-600 hover:to-purple-700 flex items-center justify-center sm:justify-start"
-              title="Refresh current rankings"
-            >
-              <RefreshCw className="h-4 w-4 sm:mr-1" />
-              <span className="hidden sm:inline">Refresh Rankings</span>
-            </button>
+            {isAdmin && (
+              <>
+                <button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className={`px-3 py-1 text-sm rounded-md flex items-center ${isRefreshing
+                    ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                    : 'bg-blue-900/50 text-blue-200 hover:bg-blue-800'
+                    }`}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  Refresh Rankings
+                </button>
+
+                <button
+                  onClick={handleMonthlyUpdate}
+                  disabled={isUpdating}
+                  className={`px-3 py-1 text-sm rounded-md flex items-center ${isUpdating
+                    ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                    : 'bg-green-900/50 text-green-200 hover:bg-green-800'
+                    }`}
+                >
+                  <Calendar className={`h-4 w-4 mr-1 ${isUpdating ? 'animate-spin' : ''}`} />
+                  Monthly Update
+                </button>
+              </>
+            )}
 
             <button
               onClick={onExport}
@@ -66,15 +134,6 @@ const ActionBar: React.FC<ActionBarProps> = ({
             >
               <Download className="h-4 w-4 sm:mr-1" />
               <span className="hidden sm:inline">Export</span>
-            </button>
-
-            <button
-              onClick={onMonthlyUpdate}
-              className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-md hover:from-amber-600 hover:to-orange-700 flex items-center justify-center sm:justify-start"
-              title="Simulate monthly update"
-            >
-              <Calendar className="h-4 w-4 sm:mr-1" />
-              <span className="hidden sm:inline">Monthly Update</span>
             </button>
           </div>
         </div>
@@ -103,6 +162,18 @@ const ActionBar: React.FC<ActionBarProps> = ({
             />
           </div>
         </div>
+      )}
+
+      {importError && (
+        <div className="text-red-500 text-sm">{importError}</div>
+      )}
+
+      {showAddForm && (
+        <GoogleSearchModal
+          isOpen={showAddForm}
+          onClose={() => setShowAddForm(false)}
+          onAdd={onAddUrl}
+        />
       )}
     </div>
   );

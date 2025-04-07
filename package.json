@@ -22,6 +22,8 @@
     "@tanstack/react-table": "^8.13.2",
     "axios": "^1.6.7",
     "chart.js": "^4.4.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "date-fns": "^3.3.1",
     "lucide-react": "^0.344.0",
     "papaparse": "^5.4.1",
@@ -31,6 +33,9 @@
     "react-hook-form": "^7.51.0",
     "react-router-dom": "^6.22.3",
     "serpapi": "^2.0.0",
+    "sonner": "^2.0.3",
+    "tailwind-merge": "^3.2.0",
+    "tailwindcss-animate": "^1.0.7",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

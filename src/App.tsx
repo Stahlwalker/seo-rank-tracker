@@ -1,22 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import { useState, useEffect } from 'react';
+import { useAuth } from './context/AuthContext';
+import { LoginModal } from './components/LoginModal';
+import RankingTable from './components/RankingTable';
+import RankingChart from './components/RankingChart';
+import ActionBar from './components/ActionBar';
+import { Button } from './components/ui/button';
+import { LogIn, Lock, Share2, LogOut } from 'lucide-react';
 import { UrlKeywordPair } from './types';
 import { getAllUrlKeywordPairs, updateUrlKeywordPair, addUrlKeywordPair, bulkAddRankingHistory } from './services/supabaseService';
-import ActionBar from './components/ActionBar';
-import { generateMockData } from './utils/mockData';
-import Header from './components/Header';
 import { supabase } from './lib/supabase';
 import { Database } from './types/supabase';
 import { useTheme } from './context/ThemeContext';
+import { toast } from './components/ui/use-toast';
+import { Toaster } from 'sonner';
 
 function App() {
   const [data, setData] = useState<UrlKeywordPair[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const location = useLocation();
-  const navigate = useNavigate();
+  const [activeView, setActiveView] = useState<'table' | 'chart'>('table');
   const { isDark } = useTheme();
+  const { isAuthenticated, isAdmin, logout } = useAuth();
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -26,12 +31,12 @@ function App() {
         const { data: pairs, error } = await supabase
           .from('url_keyword_pairs')
           .select(`
-            *,
-            ranking_history (
-              month,
-              position
-            )
-          `)
+                        *,
+                        ranking_history (
+                            month,
+                            position
+                        )
+                    `)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -66,10 +71,14 @@ function App() {
       }
     };
 
-    loadData();
-  }, []);
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [isAuthenticated]);
 
   const handleRefreshRankings = async () => {
+    if (!isAdmin) return;
+
     setIsLoading(true);
     try {
       const updatedData = await Promise.all(
@@ -95,7 +104,7 @@ function App() {
             return {
               ...item,
               currentRanking: position,
-              lastUpdated: format(new Date(), 'yyyy-MM-dd HH:mm:ss')
+              lastUpdated: new Date().toISOString()
             };
           } catch (error) {
             console.error(`Error updating ranking for ${item.url}:`, error);
@@ -143,13 +152,15 @@ function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `seo-rankings-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    link.setAttribute('download', `seo-rankings-${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   const handleAddUrl = async (newPair: UrlKeywordPair) => {
+    if (!isAdmin) return;
+
     try {
       const addedPair = await addUrlKeywordPair(newPair);
       if (addedPair) {
@@ -168,6 +179,8 @@ function App() {
   };
 
   const handleImport = async (importedData: UrlKeywordPair[]) => {
+    if (!isAdmin) return;
+
     try {
       const addedPairs = await Promise.all(
         importedData.map(pair => addUrlKeywordPair(pair))
@@ -185,7 +198,9 @@ function App() {
   };
 
   const handleMonthlyUpdate = async () => {
-    const currentMonth = format(new Date(), 'MMM yyyy');
+    if (!isAdmin) return;
+
+    const currentMonth = new Date().toLocaleString('default', { month: 'short', year: 'numeric' });
 
     try {
       // Create entries only for items that have a current ranking
@@ -230,18 +245,87 @@ function App() {
     }
   };
 
-  const activeView = location.pathname === '/chart' ? 'chart' : 'table';
-  const setActiveView = (view: 'table' | 'chart') => {
-    navigate(view === 'table' ? '/' : '/chart');
-  };
-
   return (
-    <div className={`min-h-screen ${isDark ? 'dark-gradient' : 'bg-gray-50'}`}>
-      <Header activeView={activeView} setActiveView={setActiveView} />
+    <div className={`min-h-screen ${isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
+      <Toaster />
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">SEO Rank Tracker</h1>
+          <div className="flex items-center gap-4">
+            {isAuthenticated ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const shareUrl = `${window.location.origin}/shared/${data[0]?.id}`;
+                    navigator.clipboard.writeText(shareUrl);
+                    toast({
+                      title: "Share link copied",
+                      description: "The share link has been copied to your clipboard.",
+                    });
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Share2 className="h-4 w-4" />
+                  Share
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={logout}
+                  className="flex items-center gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsLoginModalOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <LogIn className="h-4 w-4" />
+                Login
+              </Button>
+            )}
+          </div>
+        </div>
 
-      <main>
-        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0 space-y-6">
+        {!isAuthenticated ? (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+            <Lock className="h-12 w-12 mb-4" />
+            <h2 className="text-2xl font-semibold mb-2">Login Required</h2>
+            <p className="text-gray-500 mb-4">Please log in to access the SEO Rank Tracker.</p>
+            <Button
+              onClick={() => setIsLoginModalOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <LogIn className="h-4 w-4" />
+              Login
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-end mb-4">
+              <div className="flex gap-2">
+                <Button
+                  variant={activeView === 'table' ? 'default' : 'outline'}
+                  onClick={() => setActiveView('table')}
+                >
+                  Table View
+                </Button>
+                <Button
+                  variant={activeView === 'chart' ? 'default' : 'outline'}
+                  onClick={() => setActiveView('chart')}
+                >
+                  Chart View
+                </Button>
+              </div>
+            </div>
+
             <ActionBar
               onRefresh={handleRefreshRankings}
               onExport={handleExport}
@@ -249,20 +333,34 @@ function App() {
               data={data}
               onAddUrl={handleAddUrl}
               onImport={handleImport}
+              isAdmin={isAdmin}
             />
 
-            {error && (
-              <div className="mb-4 p-4 bg-red-900/50 border border-red-700 text-red-200 rounded">
-                {error}
-              </div>
-            )}
-
-            <div className={`rounded-lg p-4 ${isDark ? 'bg-gray-900 text-gray-100' : 'bg-white text-gray-900'}`}>
-              <Outlet context={{ data, setData, isLoading }} />
+            <div className="mt-8">
+              {activeView === 'table' ? (
+                <RankingTable
+                  data={data}
+                  setData={setData}
+                  isLoading={isLoading}
+                  isAdmin={isAdmin}
+                />
+              ) : (
+                <RankingChart
+                  data={data}
+                  setData={setData}
+                  isLoading={isLoading}
+                  isAdmin={isAdmin}
+                />
+              )}
             </div>
-          </div>
-        </div>
-      </main>
+          </>
+        )}
+      </div>
+
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+      />
     </div>
   );
 }
