@@ -317,16 +317,28 @@ export async function createSharedViewToken(data: UrlKeywordPair[]) {
   try {
     console.log('Creating shared view with data:', data);
 
-    // Ensure we have a valid session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) {
-      console.error('Session error:', sessionError);
-      throw new Error('Authentication error. Please log in again.');
-    }
+    // Check authentication state
+    const storedAuth = localStorage.getItem('auth');
+    const { data: { session } } = await supabase.auth.getSession();
 
-    if (!session) {
-      console.error('No active session');
-      throw new Error('Please log in to create a shared view.');
+    // In production, we need a valid Supabase session
+    if (import.meta.env.PROD) {
+      if (!session) {
+        console.error('No Supabase session in production');
+        throw new Error('Please log in to create a shared view.');
+      }
+    } else {
+      // In development, check localStorage
+      if (!storedAuth) {
+        console.error('No authentication found in localStorage');
+        throw new Error('Please log in to create a shared view.');
+      }
+
+      const { isAuthenticated } = JSON.parse(storedAuth);
+      if (!isAuthenticated) {
+        console.error('User is not authenticated');
+        throw new Error('Please log in to create a shared view.');
+      }
     }
 
     // First, check if the table exists
@@ -389,6 +401,30 @@ export async function createSharedViewToken(data: UrlKeywordPair[]) {
 
 export async function getSharedViewData(token: string) {
   try {
+    // Check authentication state
+    const storedAuth = localStorage.getItem('auth');
+    const { data: { session } } = await supabase.auth.getSession();
+
+    // In production, we need a valid Supabase session
+    if (import.meta.env.PROD) {
+      if (!session) {
+        console.error('No Supabase session in production');
+        throw new Error('Please log in to view shared data.');
+      }
+    } else {
+      // In development, check localStorage
+      if (!storedAuth) {
+        console.error('No authentication found in localStorage');
+        throw new Error('Please log in to view shared data.');
+      }
+
+      const { isAuthenticated } = JSON.parse(storedAuth);
+      if (!isAuthenticated) {
+        console.error('User is not authenticated');
+        throw new Error('Please log in to view shared data.');
+      }
+    }
+
     const { data: sharedView, error } = await supabase
       .from('shared_views')
       .select('*')
@@ -399,9 +435,9 @@ export async function getSharedViewData(token: string) {
     if (!sharedView) return null;
     if (new Date(sharedView.expires_at) < new Date()) return null;
 
-    return sharedView.data as UrlKeywordPair[];
+    return sharedView.data;
   } catch (error) {
     console.error('Error getting shared view data:', error);
-    return null;
+    throw error;
   }
 }
