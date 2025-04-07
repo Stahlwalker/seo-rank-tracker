@@ -49,8 +49,8 @@
     ],
     "rewrites": [
         {
-            "source": "/api/:path*",
-            "destination": "/api/:path*"
+            "source": "/shared/:token*",
+            "destination": "/index.html"
         },
         {
             "source": "/(.*)",

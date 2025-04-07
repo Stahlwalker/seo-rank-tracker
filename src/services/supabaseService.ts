@@ -331,23 +331,37 @@ export async function createSharedViewToken(data: UrlKeywordPair[]) {
       throw tableCheckError;
     }
 
+    // Log the data being inserted
+    const insertData = {
+      data: data,
+      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+    };
+    console.log('Attempting to insert data:', insertData);
+
     const { data: sharedView, error } = await supabase
       .from('shared_views')
-      .insert([
-        {
-          data: data,
-          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-        },
-      ])
+      .insert([insertData])
       .select()
       .single();
 
     if (error) {
       console.error('Error creating shared view:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+
       if (error.code === '42501') { // Permission denied
         throw new Error('Permission denied. Please check your RLS policies.');
       }
       throw error;
+    }
+
+    if (!sharedView) {
+      console.error('No shared view returned after insert');
+      throw new Error('Failed to create shared view: No data returned');
     }
 
     console.log('Created shared view:', sharedView);
