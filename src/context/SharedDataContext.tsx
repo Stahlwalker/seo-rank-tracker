@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { UrlKeywordPair } from '../types';
-import { supabase } from '../lib/supabase';
+import { getSharedViewData } from '../services/supabaseService';
 
 interface SharedDataContextType {
     data: UrlKeywordPair[];
@@ -10,71 +11,49 @@ interface SharedDataContextType {
 
 const SharedDataContext = createContext<SharedDataContextType | undefined>(undefined);
 
-export const SharedDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function SharedDataProvider({ children }: { children: React.ReactNode }) {
     const [data, setData] = useState<UrlKeywordPair[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { token } = useParams<{ token: string }>();
 
     useEffect(() => {
-        const loadData = async () => {
+        const loadSharedData = async () => {
+            if (!token) {
+                setError('No share token provided');
+                setIsLoading(false);
+                return;
+            }
+
             try {
-                const { data: pairs, error } = await supabase
-                    .from('url_keyword_pairs')
-                    .select(`
-            *,
-            ranking_history (
-              month,
-              position
-            )
-          `)
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-
-                const transformedPairs = (pairs || []).map(pair => ({
-                    id: pair.id,
-                    url: pair.url,
-                    keyword: pair.keyword,
-                    monthlySearchVolume: typeof pair.monthly_search_volume === 'number' ? pair.monthly_search_volume : undefined,
-                    currentRanking: pair.current_ranking || null,
-                    note: pair.note || undefined,
-                    status: pair.status as 'Testing' | 'Needs Improvement' | '' || undefined,
-                    lastUpdated: pair.last_updated || undefined,
-                    rankingHistory: (pair.ranking_history as any[] || []).map(h => ({
-                        month: h.month,
-                        position: h.position
-                    })) || []
-                }));
-
-                setData(transformedPairs);
-                setError(null);
-            } catch (error) {
-                console.error('Error loading shared data:', error);
-                setError(
-                    error instanceof Error
-                        ? error.message
-                        : 'Failed to load data. Please try again.'
-                );
-                setData([]);
+                const sharedData = await getSharedViewData(token);
+                if (!sharedData) {
+                    setError('Shared view not found or has expired');
+                    return;
+                }
+                setData(sharedData);
+            } catch (err) {
+                setError('Failed to load shared data');
+                console.error('Error loading shared data:', err);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        loadData();
-    }, []);
+        loadSharedData();
+    }, [token]);
 
     return (
         <SharedDataContext.Provider value={{ data, isLoading, error }}>
             {children}
         </SharedDataContext.Provider>
     );
-};
+}
 
-export const useSharedData = () => {
+export function useSharedData() {
     const context = useContext(SharedDataContext);
     if (context === undefined) {
         throw new Error('useSharedData must be used within a SharedDataProvider');
     }
     return context;
-}; 
+} 

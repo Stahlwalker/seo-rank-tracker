@@ -167,14 +167,6 @@ const ActionBar: React.FC<ActionBarProps> = ({
       {importError && (
         <div className="text-red-500 text-sm">{importError}</div>
       )}
-
-      {showAddForm && (
-        <GoogleSearchModal
-          isOpen={showAddForm}
-          onClose={() => setShowAddForm(false)}
-          onAdd={onAddUrl}
-        />
-      )}
     </div>
   );
 };

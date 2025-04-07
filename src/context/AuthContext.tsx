@@ -29,12 +29,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setError(null);
 
+      // Debug environment variables
+      console.log('Environment variables:', {
+        VITE_ADMIN_EMAIL: import.meta.env.VITE_ADMIN_EMAIL,
+        VITE_ADMIN_PASSWORD: import.meta.env.VITE_ADMIN_PASSWORD ? '***' : undefined,
+        providedEmail: email,
+        providedPassword: password ? '***' : undefined
+      });
+
+      // Check if environment variables are defined
+      if (!import.meta.env.VITE_ADMIN_EMAIL || !import.meta.env.VITE_ADMIN_PASSWORD) {
+        setError('Admin credentials not configured');
+        return false;
+      }
+
       // Check if the credentials match the admin credentials
       const isAdminUser = email === import.meta.env.VITE_ADMIN_EMAIL &&
         password === import.meta.env.VITE_ADMIN_PASSWORD;
 
       if (!isAdminUser) {
-        setError('Invalid email or password');
+        setError(`Invalid email or password. Please check your credentials and try again.`);
         return false;
       }
 
@@ -50,7 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return true;
     } catch (err) {
-      setError('An error occurred during login');
+      console.error('Login error:', err);
+      setError('An error occurred during login. Please try again.');
       return false;
     }
   };

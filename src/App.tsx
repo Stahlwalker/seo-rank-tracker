@@ -7,7 +7,7 @@ import ActionBar from './components/ActionBar';
 import { Button } from './components/ui/button';
 import { LogIn, Lock, Share2, LogOut } from 'lucide-react';
 import { UrlKeywordPair } from './types';
-import { getAllUrlKeywordPairs, updateUrlKeywordPair, addUrlKeywordPair, bulkAddRankingHistory } from './services/supabaseService';
+import { getAllUrlKeywordPairs, updateUrlKeywordPair, addUrlKeywordPair, bulkAddRankingHistory, createSharedViewToken } from './services/supabaseService';
 import { supabase } from './lib/supabase';
 import { Database } from './types/supabase';
 import { useTheme } from './context/ThemeContext';
@@ -257,13 +257,32 @@ function App() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    const shareUrl = `${window.location.origin}/shared/${data[0]?.id}`;
-                    navigator.clipboard.writeText(shareUrl);
-                    toast({
-                      title: "Share link copied",
-                      description: "The share link has been copied to your clipboard.",
-                    });
+                  onClick={async () => {
+                    try {
+                      if (!data || data.length === 0) {
+                        toast({
+                          title: "Error",
+                          description: "No data available to share",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
+                      const token = await createSharedViewToken(data);
+                      const shareUrl = `${window.location.origin}/shared/${token}`;
+                      await navigator.clipboard.writeText(shareUrl);
+                      toast({
+                        title: "Share link copied",
+                        description: "The share link has been copied to your clipboard.",
+                      });
+                    } catch (error) {
+                      console.error('Error creating share link:', error);
+                      toast({
+                        title: "Error",
+                        description: error instanceof Error ? error.message : "Failed to create share link. Please try again.",
+                        variant: "destructive"
+                      });
+                    }
                   }}
                   className="flex items-center gap-2"
                 >

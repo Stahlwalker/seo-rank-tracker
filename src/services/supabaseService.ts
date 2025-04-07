@@ -312,3 +312,70 @@ export const bulkAddRankingHistory = async (entries: { urlKeywordId: string, mon
     throw error;
   }
 };
+
+export async function createSharedViewToken(data: UrlKeywordPair[]) {
+  try {
+    console.log('Creating shared view with data:', data);
+
+    // First, check if the table exists
+    const { error: tableCheckError } = await supabase
+      .from('shared_views')
+      .select('id')
+      .limit(1);
+
+    if (tableCheckError) {
+      console.error('Table check error:', tableCheckError);
+      if (tableCheckError.code === '42P01') { // Table doesn't exist
+        throw new Error('The shared_views table does not exist. Please create it in your Supabase database.');
+      }
+      throw tableCheckError;
+    }
+
+    const { data: sharedView, error } = await supabase
+      .from('shared_views')
+      .insert([
+        {
+          data: data,
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating shared view:', error);
+      if (error.code === '42501') { // Permission denied
+        throw new Error('Permission denied. Please check your RLS policies.');
+      }
+      throw error;
+    }
+
+    console.log('Created shared view:', sharedView);
+    return sharedView.id;
+  } catch (error) {
+    console.error('Error creating shared view token:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to create share link: ${error.message}`);
+    }
+    throw new Error('Failed to create share link. Please try again.');
+  }
+}
+
+export async function getSharedViewData(token: string) {
+  try {
+    const { data: sharedView, error } = await supabase
+      .from('shared_views')
+      .select('*')
+      .eq('id', token)
+      .single();
+
+    if (error) throw error;
+    if (!sharedView) return null;
+    if (new Date(sharedView.expires_at) < new Date()) return null;
+
+    return sharedView.data as UrlKeywordPair[];
+  } catch (error) {
+    console.error('Error getting shared view data:', error);
+    return null;
+  }
+}
