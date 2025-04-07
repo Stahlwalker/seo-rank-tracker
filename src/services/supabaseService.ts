@@ -317,6 +317,18 @@ export async function createSharedViewToken(data: UrlKeywordPair[]) {
   try {
     console.log('Creating shared view with data:', data);
 
+    // Ensure we have a valid session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      throw new Error('Authentication error. Please log in again.');
+    }
+
+    if (!session) {
+      console.error('No active session');
+      throw new Error('Please log in to create a shared view.');
+    }
+
     // First, check if the table exists
     const { error: tableCheckError } = await supabase
       .from('shared_views')
