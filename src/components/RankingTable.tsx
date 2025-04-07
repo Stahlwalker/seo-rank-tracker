@@ -588,10 +588,10 @@ const RankingTable: React.FC = () => {
                 e.target.value as 'Testing' | 'Needs Improvement' | ''
               )}
               className={`px-2 py-1 text-sm rounded-md border ${value === 'Testing'
-                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                ? 'bg-blue-900/50 text-blue-200 border-blue-700'
                 : value === 'Needs Improvement'
-                  ? 'bg-amber-50 text-amber-700 border-amber-200'
-                  : 'bg-gray-50 text-gray-700 border-gray-200'
+                  ? 'bg-amber-900/50 text-amber-200 border-amber-700'
+                  : 'bg-gray-800/50 text-gray-300 border-gray-700'
                 }`}
             >
               <option value="">None</option>
@@ -620,26 +620,27 @@ const RankingTable: React.FC = () => {
             <div className="flex items-center">
               <textarea
                 ref={noteInputRef}
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm"
+                defaultValue={value || ''}
+                className="w-full px-2 py-1 border border-gray-700 rounded-md text-sm bg-gray-800/80 text-gray-100 placeholder-gray-400"
                 rows={2}
                 placeholder="Add a note..."
+                autoFocus
               />
               <div className="flex flex-col ml-2">
                 <button
                   onClick={() => {
-                    handleUpdateNote(id, noteText || undefined);
+                    const newNote = noteInputRef.current?.value || undefined;
+                    handleUpdateNote(id, newNote);
                     setEditingNoteId(null);
                   }}
-                  className="text-green-500 hover:text-green-700 p-1"
+                  className="text-green-500 hover:text-green-300 p-1"
                   title="Save"
                 >
                   <Save className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setEditingNoteId(null)}
-                  className="text-red-500 hover:text-red-700 p-1"
+                  className="text-red-500 hover:text-red-300 p-1"
                   title="Cancel"
                 >
                   <XCircle className="h-4 w-4" />
@@ -653,7 +654,7 @@ const RankingTable: React.FC = () => {
           <div className="flex items-center justify-between group">
             <div className="flex-1 truncate">
               {value ? (
-                <span className="text-gray-700">{value}</span>
+                <span className="text-gray-300">{value}</span>
               ) : (
                 <span className="text-gray-400 italic">No note</span>
               )}
@@ -661,10 +662,8 @@ const RankingTable: React.FC = () => {
             <button
               onClick={() => {
                 setEditingNoteId(id);
-                setNoteText(value || '');
-                setTimeout(() => noteInputRef.current?.focus(), 0);
               }}
-              className="text-blue-500 hover:text-blue-700 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="text-blue-500 hover:text-blue-300 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
               title="Edit note"
             >
               <Edit className="h-4 w-4" />
@@ -794,11 +793,11 @@ const RankingTable: React.FC = () => {
         </div>
       )}
 
-      <div className={`${isDark ? 'bg-gray-900' : 'bg-white'} rounded-lg shadow`}>
+      <div className="bg-gray-900 rounded-lg shadow">
         <div className="p-4 sm:p-6 space-y-4">
           {recentlyDeleted.length > 0 && (
-            <div className="bg-blue-50 dark:bg-blue-900/50 border border-blue-200 dark:border-blue-700 rounded-md p-4 flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-blue-700 dark:text-blue-200">
+            <div className="bg-blue-900/50 border border-blue-700 rounded-md p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-blue-200">
                 <Undo2 className="h-4 w-4" />
                 <span>Recently deleted: {recentlyDeleted.length} item(s)</span>
               </div>
@@ -807,14 +806,14 @@ const RankingTable: React.FC = () => {
                   <button
                     key={item.id}
                     onClick={() => handleRestore(item)}
-                    className="px-3 py-1 text-sm bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 text-blue-700 dark:text-blue-200 rounded-md flex items-center space-x-1"
+                    className="px-3 py-1 text-sm bg-blue-800 hover:bg-blue-700 text-blue-200 rounded-md flex items-center space-x-1"
                   >
                     <span className="truncate max-w-[200px]">Restore "{item.keyword}"</span>
                   </button>
                 ))}
                 <button
                   onClick={() => setRecentlyDeleted([])}
-                  className="p-1 hover:bg-blue-200 dark:hover:bg-blue-700 rounded-md"
+                  className="p-1 hover:bg-blue-700 rounded-md"
                   title="Clear undo history"
                 >
                   <X className="h-4 w-4" />
@@ -834,8 +833,8 @@ const RankingTable: React.FC = () => {
                     onClick={handleBulkDelete}
                     disabled={deletingIds.size > 0}
                     className={`px-3 py-1 text-sm rounded-md flex items-center ${deletingIds.size > 0
-                      ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
-                      : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-200 hover:bg-red-200 dark:hover:bg-red-800'
+                      ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                      : 'bg-red-900/50 text-red-200 hover:bg-red-800'
                       }`}
                   >
                     <Trash2 className={`h-3 w-3 mr-1 ${deletingIds.size > 0 ? 'animate-pulse' : ''}`} />
@@ -846,8 +845,8 @@ const RankingTable: React.FC = () => {
               <button
                 onClick={() => toggleFilter('top10')}
                 className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top10')
-                  ? 'bg-green-600 dark:bg-green-900/80 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-green-900/80 text-white'
+                  : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700'
                   }`}
               >
                 <Filter className="h-3 w-3 mr-1" />
@@ -856,8 +855,8 @@ const RankingTable: React.FC = () => {
               <button
                 onClick={() => toggleFilter('top20')}
                 className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top20')
-                  ? 'bg-yellow-600 dark:bg-yellow-900/80 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-yellow-900/80 text-white'
+                  : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700'
                   }`}
               >
                 <Filter className="h-3 w-3 mr-1" />
@@ -866,8 +865,8 @@ const RankingTable: React.FC = () => {
               <button
                 onClick={() => toggleFilter('top30')}
                 className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top30')
-                  ? 'bg-red-600 dark:bg-red-900/80 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-red-900/80 text-white'
+                  : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700'
                   }`}
               >
                 <Filter className="h-3 w-3 mr-1" />
@@ -876,8 +875,8 @@ const RankingTable: React.FC = () => {
               <button
                 onClick={() => toggleFilter('below30')}
                 className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('below30')
-                  ? 'bg-gray-600 dark:bg-gray-800/80 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-gray-800/80 text-white'
+                  : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700'
                   }`}
               >
                 <Filter className="h-3 w-3 mr-1" />
@@ -886,7 +885,7 @@ const RankingTable: React.FC = () => {
               {(activeFilters.length > 0 || searchTerm) && (
                 <button
                   onClick={clearFilters}
-                  className="px-3 py-1 text-sm rounded-md bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-200 hover:bg-red-200 dark:hover:bg-red-800/80 flex items-center"
+                  className="px-3 py-1 text-sm rounded-md bg-red-900/50 text-red-200 hover:bg-red-800/80 flex items-center"
                 >
                   <X className="h-3 w-3 mr-1" />
                   Clear Filters
@@ -895,12 +894,12 @@ const RankingTable: React.FC = () => {
             </div>
             <div className="relative w-full sm:w-64">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                <Search className="h-4 w-4 text-gray-500" />
               </div>
               <input
                 type="text"
                 placeholder="Search URLs or keywords..."
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800/80 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                className="pl-10 pr-4 py-2 w-full border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-800/80 text-gray-100 placeholder-gray-400"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -908,15 +907,15 @@ const RankingTable: React.FC = () => {
           </div>
 
           <div className="relative">
-            <div className="overflow-x-auto shadow-sm max-h-[70vh] border border-gray-200 dark:border-gray-700 rounded-lg">
+            <div className="overflow-x-auto shadow-sm max-h-[70vh] border border-gray-700 rounded-lg">
               <div className="inline-block min-w-full align-middle">
                 <div className="relative">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
-                    <thead className="bg-gray-50 dark:bg-gray-900/90 sticky top-0 z-30">
+                  <table className="min-w-full divide-y divide-gray-700 table-fixed">
+                    <thead className="bg-gray-900/90 sticky top-0 z-30">
                       <tr>
                         {/* Fixed columns */}
                         <th
-                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap md:sticky left-0 z-40 bg-gray-50 dark:bg-gray-900/90 border-r border-gray-200 dark:border-gray-700"
+                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap md:sticky left-0 z-40 bg-gray-900/90 border-r border-gray-700"
                           style={{ minWidth: '200px' }}
                         >
                           <div className="cursor-pointer select-none flex items-center" onClick={table.getColumn('url')?.getToggleSortingHandler()}>
@@ -925,7 +924,7 @@ const RankingTable: React.FC = () => {
                           </div>
                         </th>
                         <th
-                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap md:sticky left-[200px] z-40 bg-gray-50 dark:bg-gray-900/90 border-r border-gray-200 dark:border-gray-700"
+                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap md:sticky left-[200px] z-40 bg-gray-900/90 border-r border-gray-700"
                           style={{ minWidth: '150px' }}
                         >
                           <div className="cursor-pointer select-none flex items-center" onClick={table.getColumn('keyword')?.getToggleSortingHandler()}>
@@ -934,7 +933,7 @@ const RankingTable: React.FC = () => {
                           </div>
                         </th>
                         <th
-                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap md:sticky left-[350px] z-40 bg-gray-50 dark:bg-gray-900/90 border-r border-gray-200 dark:border-gray-700"
+                          className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap md:sticky left-[350px] z-40 bg-gray-900/90 border-r border-gray-700"
                           style={{ minWidth: '150px' }}
                         >
                           <div className="cursor-pointer select-none flex items-center" onClick={table.getColumn('monthlySearchVolume')?.getToggleSortingHandler()}>
@@ -947,7 +946,7 @@ const RankingTable: React.FC = () => {
                           <th
                             key={header.id}
                             scope="col"
-                            className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider whitespace-nowrap bg-gray-50 dark:bg-gray-900/90 sticky top-0"
+                            className="px-3 sm:px-6 py-2 text-left text-xs font-medium text-gray-300 uppercase tracking-wider whitespace-nowrap bg-gray-900/90 sticky top-0"
                           >
                             {header.isPlaceholder ? null : (
                               <div
@@ -964,13 +963,13 @@ const RankingTable: React.FC = () => {
                         ))}
                       </tr>
                     </thead>
-                    <tbody className={`${isDark ? 'bg-gray-900' : 'bg-white'} divide-y divide-gray-200 dark:divide-gray-700`}>
+                    <tbody className="bg-gray-900 divide-y divide-gray-700">
                       {table.getRowModel().rows.length > 0 ? (
                         table.getRowModel().rows.map(row => (
-                          <tr key={row.id} className="hover:bg-gray-50/5 dark:hover:bg-gray-800/50">
+                          <tr key={row.id} className="hover:bg-gray-800/50">
                             {/* Fixed columns */}
                             <td
-                              className={`px-3 sm:px-6 py-2 text-sm text-gray-500 dark:text-gray-400 truncate md:sticky left-0 ${isDark ? 'bg-gray-900' : 'bg-white'} border-r border-gray-200 dark:border-gray-700`}
+                              className="px-3 sm:px-6 py-2 text-sm text-gray-400 truncate md:sticky left-0 bg-gray-900 border-r border-gray-700"
                               style={{ minWidth: '200px' }}
                             >
                               <div className="truncate">
@@ -978,7 +977,7 @@ const RankingTable: React.FC = () => {
                               </div>
                             </td>
                             <td
-                              className={`px-3 sm:px-6 py-2 text-sm text-gray-500 dark:text-gray-400 truncate md:sticky left-[200px] ${isDark ? 'bg-gray-900' : 'bg-white'} border-r border-gray-200 dark:border-gray-700`}
+                              className="px-3 sm:px-6 py-2 text-sm text-gray-400 truncate md:sticky left-[200px] bg-gray-900 border-r border-gray-700"
                               style={{ minWidth: '150px' }}
                             >
                               <div className="truncate">
@@ -986,7 +985,7 @@ const RankingTable: React.FC = () => {
                               </div>
                             </td>
                             <td
-                              className={`px-3 sm:px-6 py-2 text-sm text-gray-500 dark:text-gray-400 truncate md:sticky left-[350px] ${isDark ? 'bg-gray-900' : 'bg-white'} border-r border-gray-200 dark:border-gray-700`}
+                              className="px-3 sm:px-6 py-2 text-sm text-gray-400 truncate md:sticky left-[350px] bg-gray-900 border-r border-gray-700"
                               style={{ minWidth: '150px' }}
                             >
                               <div className="truncate">
@@ -997,7 +996,7 @@ const RankingTable: React.FC = () => {
                             {row.getVisibleCells().slice(4).map(cell => (
                               <td
                                 key={cell.id}
-                                className="px-3 sm:px-6 py-2 text-sm text-gray-500 dark:text-gray-400 truncate"
+                                className="px-3 sm:px-6 py-2 text-sm text-gray-400 truncate"
                               >
                                 <div className="truncate">
                                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
