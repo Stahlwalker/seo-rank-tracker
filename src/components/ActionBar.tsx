@@ -78,21 +78,24 @@ const ActionBar: React.FC<ActionBarProps> = ({
       <div className="p-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-md hover:from-green-600 hover:to-emerald-700 flex items-center justify-center sm:justify-start"
-            >
-              <Plus className="h-4 w-4 sm:mr-1" />
-              <span className="hidden sm:inline">Add URL</span>
-            </button>
-
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-md hover:from-blue-600 hover:to-indigo-700 flex items-center justify-center sm:justify-start"
-            >
-              <Upload className="h-4 w-4 sm:mr-1" />
-              <span className="hidden sm:inline">Import URLs</span>
-            </button>
+            {isAdmin && (
+              <>
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-md hover:from-green-600 hover:to-emerald-700 flex items-center justify-center sm:justify-start"
+                >
+                  <Plus className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Add URL</span>
+                </button>
+                <button
+                  onClick={() => setShowImportModal(true)}
+                  className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-md hover:from-blue-600 hover:to-indigo-700 flex items-center justify-center sm:justify-start"
+                >
+                  <Upload className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Import URLs</span>
+                </button>
+              </>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
@@ -121,20 +124,19 @@ const ActionBar: React.FC<ActionBarProps> = ({
                   <Calendar className={`h-4 w-4 mr-1 ${isUpdating ? 'animate-spin' : ''}`} />
                   Monthly Update
                 </button>
+                <button
+                  onClick={onExport}
+                  disabled={!data || data.length === 0}
+                  className={`flex-1 sm:flex-none px-4 py-2 rounded-md flex items-center justify-center sm:justify-start ${!data || data.length === 0
+                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700'
+                    }`}
+                >
+                  <Download className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Export</span>
+                </button>
               </>
             )}
-
-            <button
-              onClick={onExport}
-              disabled={!data || data.length === 0}
-              className={`flex-1 sm:flex-none px-4 py-2 rounded-md flex items-center justify-center sm:justify-start ${!data || data.length === 0
-                ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700'
-                }`}
-            >
-              <Download className="h-4 w-4 sm:mr-1" />
-              <span className="hidden sm:inline">Export</span>
-            </button>
           </div>
         </div>
       </div>

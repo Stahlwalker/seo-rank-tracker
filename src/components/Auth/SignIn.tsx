@@ -4,28 +4,33 @@ import { useAuth } from '../../context/AuthContext';
 import { LineChart } from 'lucide-react';
 
 interface SignInFormValues {
-  email: string;
+  email?: string;
   password: string;
 }
 
 interface SignInProps {
-  onToggleView: () => void;
+  onSuccess?: () => void;
 }
 
-const SignIn: React.FC<SignInProps> = ({ onToggleView }) => {
+const SignIn: React.FC<SignInProps> = ({ onSuccess }) => {
   const { register, handleSubmit, formState: { errors } } = useForm<SignInFormValues>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { signIn } = useAuth();
+  const { login, error: authError } = useAuth();
+  const [mode, setMode] = useState<'admin' | 'viewer'>('admin');
 
   const onSubmit = async (data: SignInFormValues) => {
     setLoading(true);
     setError(null);
-
     try {
-      const { error } = await signIn(data.email, data.password);
-      if (error) {
-        setError(error.message);
+      const success = await login(
+        mode === 'admin' ? data.email || null : null,
+        data.password
+      );
+      if (success) {
+        if (onSuccess) onSuccess();
+      } else if (authError) {
+        setError(authError);
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
@@ -37,56 +42,69 @@ const SignIn: React.FC<SignInProps> = ({ onToggleView }) => {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="flex justify-center mb-6">
-        <div className="flex items-center">
-          <LineChart className="h-8 w-8 text-blue-600 mr-2" />
-          <h1 className="text-2xl font-bold text-gray-800">SEO Rank Tracker</h1>
-        </div>
-      </div>
+      <div className="bg-gray-900 rounded-lg shadow-md p-8 border border-gray-700">
+        <h2 className="text-xl font-semibold text-gray-100 mb-6">Sign In</h2>
 
-      <div className="bg-white rounded-lg shadow-md p-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-6">Sign In</h2>
+        <div className="flex mb-6 gap-2">
+          <button
+            className={`flex-1 px-4 py-2 rounded-md border ${mode === 'admin' ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-800 text-gray-300 border-gray-700'}`}
+            onClick={() => setMode('admin')}
+            type="button"
+          >
+            Admin
+          </button>
+          <button
+            className={`flex-1 px-4 py-2 rounded-md border ${mode === 'viewer' ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-800 text-gray-300 border-gray-700'}`}
+            onClick={() => setMode('viewer')}
+            type="button"
+          >
+            Viewer
+          </button>
+        </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-500 text-red-700">
+          <div className="mb-4 p-3 bg-red-900/80 border-l-4 border-red-500 text-red-200">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="mb-4">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              className={`w-full px-3 py-2 border rounded-md ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
-              {...register('email', { 
-                required: 'Email is required',
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: 'Invalid email address'
-                }
-              })}
-            />
-            {errors.email && (
-              <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-            )}
-          </div>
+          {mode === 'admin' && (
+            <div className="mb-4">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                className={`w-full px-3 py-2 border rounded-md bg-gray-800 text-gray-100 placeholder-gray-500 ${errors.email ? 'border-red-500' : 'border-gray-700'}`}
+                {...register('email', {
+                  required: mode === 'admin' ? 'Email is required' : false,
+                  pattern: {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    message: 'Invalid email address'
+                  }
+                })}
+                disabled={mode !== 'admin'}
+              />
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-400">{errors.email.message}</p>
+              )}
+            </div>
+          )}
 
           <div className="mb-6">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">
               Password
             </label>
             <input
               id="password"
               type="password"
-              className={`w-full px-3 py-2 border rounded-md ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-3 py-2 border rounded-md bg-gray-800 text-gray-100 placeholder-gray-500 ${errors.password ? 'border-red-500' : 'border-gray-700'}`}
               {...register('password', { required: 'Password is required' })}
             />
             {errors.password && (
-              <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+              <p className="mt-1 text-sm text-red-400">{errors.password.message}</p>
             )}
           </div>
 
@@ -98,18 +116,6 @@ const SignIn: React.FC<SignInProps> = ({ onToggleView }) => {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-
-        <div className="mt-4 text-center">
-          <p className="text-sm text-gray-600">
-            Don't have an account?{' '}
-            <button
-              onClick={onToggleView}
-              className="text-blue-600 hover:text-blue-800 font-medium"
-            >
-              Sign Up
-            </button>
-          </p>
-        </div>
       </div>
     </div>
   );

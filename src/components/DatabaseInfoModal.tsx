@@ -12,31 +12,31 @@ const DatabaseInfoModal: React.FC<DatabaseInfoModalProps> = ({ onClose }) => {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-800 flex items-center">
             <Database className="h-5 w-5 mr-2 text-blue-600" />
-            Database Options for SEO Rank Tracker
+            Database Options for SERP Tracker
           </h2>
-          <button 
+          <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
-        
+
         <div className="prose max-w-none">
           <p className="text-gray-600">
-            Currently, your SEO Rank Tracker is using browser <strong>localStorage</strong> to store your data. 
+            Currently, your SERP Tracker is using browser <strong>localStorage</strong> to store your data.
             This works well for personal use but has limitations:
           </p>
-          
+
           <ul className="mb-6 text-gray-600">
             <li>Data is stored only in your current browser</li>
             <li>Data can't be shared between devices or team members</li>
             <li>Storage is limited to about 5MB</li>
             <li>Data can be lost if browser storage is cleared</li>
           </ul>
-          
+
           <h3 className="text-lg font-medium text-gray-800 mb-2">Database Options</h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50 transition-colors">
               <div className="flex items-center mb-2">
@@ -51,7 +51,7 @@ const DatabaseInfoModal: React.FC<DatabaseInfoModalProps> = ({ onClose }) => {
                 <div><strong>Cons:</strong> Requires account creation</div>
               </div>
             </div>
-            
+
             <div className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50 transition-colors">
               <div className="flex items-center mb-2">
                 <Server className="h-5 w-5 text-purple-600 mr-2" />
@@ -65,7 +65,7 @@ const DatabaseInfoModal: React.FC<DatabaseInfoModalProps> = ({ onClose }) => {
                 <div><strong>Cons:</strong> Manual import/export required</div>
               </div>
             </div>
-            
+
             <div className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50 transition-colors">
               <div className="flex items-center mb-2">
                 <Cloud className="h-5 w-5 text-green-600 mr-2" />
@@ -79,7 +79,7 @@ const DatabaseInfoModal: React.FC<DatabaseInfoModalProps> = ({ onClose }) => {
                 <div><strong>Cons:</strong> NoSQL structure, pricing can scale up</div>
               </div>
             </div>
-            
+
             <div className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50 transition-colors">
               <div className="flex items-center mb-2">
                 <Github className="h-5 w-5 text-gray-800 mr-2" />
@@ -94,9 +94,9 @@ const DatabaseInfoModal: React.FC<DatabaseInfoModalProps> = ({ onClose }) => {
               </div>
             </div>
           </div>
-          
+
           <h3 className="text-lg font-medium text-gray-800 mb-2">Implementation Steps</h3>
-          
+
           <div className="mb-6">
             <h4 className="font-medium text-gray-800 mb-1">For Supabase:</h4>
             <ol className="list-decimal pl-5 text-gray-600 text-sm">
@@ -108,7 +108,7 @@ const DatabaseInfoModal: React.FC<DatabaseInfoModalProps> = ({ onClose }) => {
               <li>Add user authentication UI</li>
             </ol>
           </div>
-          
+
           <div className="mb-6">
             <h4 className="font-medium text-gray-800 mb-1">For SQLite (sql.js):</h4>
             <ol className="list-decimal pl-5 text-gray-600 text-sm">
@@ -118,21 +118,21 @@ const DatabaseInfoModal: React.FC<DatabaseInfoModalProps> = ({ onClose }) => {
               <li>Add UI for importing/exporting the database file</li>
             </ol>
           </div>
-          
+
           <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
             <h4 className="font-medium text-blue-800 mb-1">Recommendation</h4>
             <p className="text-blue-700 text-sm">
-              For most users, Supabase offers the best balance of ease of use, features, and scalability. 
+              For most users, Supabase offers the best balance of ease of use, features, and scalability.
               It provides authentication, real-time updates, and a SQL database with a generous free tier.
             </p>
           </div>
-          
+
           <p className="text-gray-600">
-            Would you like to implement one of these database solutions? I can help you set up the database 
-            structure and integrate it with your SEO Rank Tracker application.
+            Would you like to implement one of these database solutions? I can help you set up the database
+            structure and integrate it with your SERP Tracker application.
           </p>
         </div>
-        
+
         <div className="mt-6 flex justify-end">
           <button
             onClick={onClose}

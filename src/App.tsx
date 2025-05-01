@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
-import { LoginModal } from './components/LoginModal';
+import AuthModal from './components/Auth/AuthModal';
 import RankingTable from './components/RankingTable';
 import RankingChart from './components/RankingChart';
 import ActionBar from './components/ActionBar';
@@ -20,7 +20,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState<'table' | 'chart'>('table');
   const { isDark } = useTheme();
-  const { isAuthenticated, isAdmin, logout } = useAuth();
+  const { role, logout } = useAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   useEffect(() => {
@@ -71,13 +71,13 @@ function App() {
       }
     };
 
-    if (isAuthenticated) {
+    if (role === 'admin') {
       loadData();
     }
-  }, [isAuthenticated]);
+  }, [role]);
 
   const handleRefreshRankings = async () => {
-    if (!isAdmin) return;
+    if (role !== 'admin') return;
 
     setIsLoading(true);
     try {
@@ -159,7 +159,7 @@ function App() {
   };
 
   const handleAddUrl = async (newPair: UrlKeywordPair) => {
-    if (!isAdmin) return;
+    if (role !== 'admin') return;
 
     try {
       const addedPair = await addUrlKeywordPair(newPair);
@@ -179,7 +179,7 @@ function App() {
   };
 
   const handleImport = async (importedData: UrlKeywordPair[]) => {
-    if (!isAdmin) return;
+    if (role !== 'admin') return;
 
     try {
       const addedPairs = await Promise.all(
@@ -198,7 +198,7 @@ function App() {
   };
 
   const handleMonthlyUpdate = async () => {
-    if (!isAdmin) return;
+    if (role !== 'admin') return;
 
     const currentMonth = new Date().toLocaleString('default', { month: 'short', year: 'numeric' });
 
@@ -250,56 +250,10 @@ function App() {
       <Toaster />
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">SEO Rank Tracker</h1>
+          <h1 className="text-3xl font-bold">SERP Tracker</h1>
           <div className="flex items-center gap-4">
-            {isAuthenticated ? (
+            {role === 'admin' ? (
               <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      // Check if user is authenticated
-                      const { data: { session } } = await supabase.auth.getSession();
-                      if (!session) {
-                        toast({
-                          title: "Authentication Required",
-                          description: "Please log in to create a shared view.",
-                          variant: "destructive"
-                        });
-                        return;
-                      }
-
-                      if (!data || data.length === 0) {
-                        toast({
-                          title: "Error",
-                          description: "No data available to share",
-                          variant: "destructive"
-                        });
-                        return;
-                      }
-
-                      const token = await createSharedViewToken(data);
-                      const shareUrl = `${window.location.origin}/shared/${token}`;
-                      await navigator.clipboard.writeText(shareUrl);
-                      toast({
-                        title: "Share link copied",
-                        description: "The share link has been copied to your clipboard.",
-                      });
-                    } catch (error) {
-                      console.error('Error creating share link:', error);
-                      toast({
-                        title: "Error",
-                        description: error instanceof Error ? error.message : "Failed to create share link. Please try again.",
-                        variant: "destructive"
-                      });
-                    }
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <Share2 className="h-4 w-4" />
-                  Share
-                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -310,6 +264,16 @@ function App() {
                   Logout
                 </Button>
               </>
+            ) : role === 'viewer' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={logout}
+                className="flex items-center gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
             ) : (
               <Button
                 variant="outline"
@@ -324,11 +288,11 @@ function App() {
           </div>
         </div>
 
-        {!isAuthenticated ? (
+        {!role ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
             <Lock className="h-12 w-12 mb-4" />
             <h2 className="text-2xl font-semibold mb-2">Login Required</h2>
-            <p className="text-gray-500 mb-4">Please log in to access the SEO Rank Tracker.</p>
+            <p className="text-gray-500 mb-4">Please log in to access the SERP Tracker.</p>
             <Button
               onClick={() => setIsLoginModalOpen(true)}
               className="flex items-center gap-2"
@@ -363,7 +327,7 @@ function App() {
               data={data}
               onAddUrl={handleAddUrl}
               onImport={handleImport}
-              isAdmin={isAdmin}
+              isAdmin={role === 'admin'}
             />
 
             <div className="mt-8">
@@ -372,14 +336,14 @@ function App() {
                   data={data}
                   setData={setData}
                   isLoading={isLoading}
-                  isAdmin={isAdmin}
+                  isAdmin={role === 'admin'}
                 />
               ) : (
                 <RankingChart
                   data={data}
                   setData={setData}
                   isLoading={isLoading}
-                  isAdmin={isAdmin}
+                  isAdmin={role === 'admin'}
                 />
               )}
             </div>
@@ -387,10 +351,9 @@ function App() {
         )}
       </div>
 
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-      />
+      {isLoginModalOpen && (
+        <AuthModal onClose={() => setIsLoginModalOpen(false)} />
+      )}
     </div>
   );
 }

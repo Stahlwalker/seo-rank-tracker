@@ -253,6 +253,20 @@ const RankingChart: React.FC<Props> = ({ data, setData, isLoading, isAdmin }) =>
 
   return (
     <div className={`${isDark ? 'bg-gray-900' : 'bg-white'} rounded-lg shadow p-6`}>
+      {/* Chart at the top */}
+      {selectedUrls.length > 0 ? (
+        <div className="h-[500px] mb-8">
+          <Line data={chartData} options={options} />
+        </div>
+      ) : (
+        <div className={`flex items-center justify-center h-[500px] mb-8 rounded-lg border ${isDark
+          ? 'bg-gray-800 border-gray-700 text-gray-400'
+          : 'bg-gray-50 border-gray-200 text-gray-500'
+          }`}>
+          <p>Select at least one URL to display the chart</p>
+        </div>
+      )}
+      {/* URL selection panel and table below */}
       <div className={`transition-all duration-300 ${showSelectionPanel ? 'mb-6' : 'mb-2'}`}>
         <div className="flex justify-between items-center mb-4">
           <h3 className={`text-lg font-medium ${isDark ? 'text-gray-100' : 'text-gray-700'}`}>URL Selection</h3>
@@ -453,19 +467,6 @@ const RankingChart: React.FC<Props> = ({ data, setData, isLoading, isAdmin }) =>
           </>
         )}
       </div>
-
-      {selectedUrls.length > 0 ? (
-        <div className="h-[500px]">
-          <Line data={chartData} options={options} />
-        </div>
-      ) : (
-        <div className={`flex items-center justify-center h-[500px] rounded-lg border ${isDark
-          ? 'bg-gray-800 border-gray-700 text-gray-400'
-          : 'bg-gray-50 border-gray-200 text-gray-500'
-          }`}>
-          <p>Select at least one URL to display the chart</p>
-        </div>
-      )}
     </div>
   );
 };
