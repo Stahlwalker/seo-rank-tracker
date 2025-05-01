@@ -32,6 +32,22 @@ interface EditingCell {
 
 const columnHelper = createColumnHelper<UrlKeywordPair>();
 
+// Custom filter function for ranking filters
+const rankingFilterFn = (activeFilters: string[]): FilterFn<UrlKeywordPair> => (row, columnId, filterValue) => {
+  if (activeFilters.length === 0) return true;
+
+  const currentRanking = row.original.currentRanking;
+
+  if (currentRanking === null) return false;
+
+  if (activeFilters.includes('top10') && currentRanking <= 10) return true;
+  if (activeFilters.includes('top11to20') && currentRanking > 10 && currentRanking <= 20) return true;
+  if (activeFilters.includes('top21to30') && currentRanking > 20 && currentRanking <= 30) return true;
+  if (activeFilters.includes('below30') && currentRanking > 30) return true;
+
+  return false;
+};
+
 const RankingTable: React.FC<Props> = ({ data, setData, isLoading, isAdmin }) => {
   const { isDark } = useTheme();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -678,9 +694,9 @@ const RankingTable: React.FC<Props> = ({ data, setData, isLoading, isAdmin }) =>
       header: () => (
         <div className="flex items-center">
           Current Ranking
-          <span className="ml-1 text-xs text-blue-600 font-normal">(click to check)</span>
         </div>
       ),
+      filterFn: rankingFilterFn(activeFilters),
       cell: info => {
         const value = info.getValue();
         const lastUpdated = info.row.original.lastUpdated;
@@ -690,7 +706,8 @@ const RankingTable: React.FC<Props> = ({ data, setData, isLoading, isAdmin }) =>
             {value !== null ? (
               <span className={`font-medium ${value <= 10 ? 'text-green-600' :
                 value <= 20 ? 'text-yellow-600' :
-                  'text-red-600'
+                  value <= 30 ? 'text-red-600' :
+                    'text-gray-400'
                 }`}>
                 {value}
               </span>
@@ -844,22 +861,6 @@ const RankingTable: React.FC<Props> = ({ data, setData, isLoading, isAdmin }) =>
     return false;
   };
 
-  // Custom filter function for ranking filters
-  const rankingFilterFn: FilterFn<UrlKeywordPair> = (row, columnId, filterValue) => {
-    if (activeFilters.length === 0) return true;
-
-    const currentRanking = row.original.currentRanking;
-
-    if (currentRanking === null) return false;
-
-    if (activeFilters.includes('top10') && currentRanking <= 10) return true;
-    if (activeFilters.includes('top20') && currentRanking > 10 && currentRanking <= 20) return true;
-    if (activeFilters.includes('top30') && currentRanking > 20 && currentRanking <= 30) return true;
-    if (activeFilters.includes('below30') && currentRanking > 30) return true;
-
-    return false;
-  };
-
   const table = useReactTable({
     data,
     columns,
@@ -873,7 +874,7 @@ const RankingTable: React.FC<Props> = ({ data, setData, isLoading, isAdmin }) =>
     getFilteredRowModel: getFilteredRowModel(),
     globalFilterFn: globalFilterFn,
     filterFns: {
-      ranking: rankingFilterFn,
+      ranking: rankingFilterFn(activeFilters),
     },
   });
 
@@ -985,8 +986,8 @@ const RankingTable: React.FC<Props> = ({ data, setData, isLoading, isAdmin }) =>
                 Top 10
               </button>
               <button
-                onClick={() => toggleFilter('top20')}
-                className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top20')
+                onClick={() => toggleFilter('top11to20')}
+                className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top11to20')
                   ? 'bg-yellow-900/80 text-white'
                   : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700'
                   }`}
@@ -995,8 +996,8 @@ const RankingTable: React.FC<Props> = ({ data, setData, isLoading, isAdmin }) =>
                 11-20
               </button>
               <button
-                onClick={() => toggleFilter('top30')}
-                className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top30')
+                onClick={() => toggleFilter('top21to30')}
+                className={`px-3 py-1 text-sm rounded-md flex items-center ${activeFilters.includes('top21to30')
                   ? 'bg-red-900/80 text-white'
                   : 'bg-gray-800/80 text-gray-300 hover:bg-gray-700'
                   }`}
