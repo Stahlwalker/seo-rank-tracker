@@ -5,6 +5,7 @@ import { router } from './routes';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import './index.css';
+import { injectSpeedInsights } from '@vercel/speed-insights';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -15,3 +16,5 @@ createRoot(document.getElementById('root')!).render(
     </ThemeProvider>
   </StrictMode>
 );
+
+injectSpeedInsights();
