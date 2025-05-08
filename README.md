@@ -1,4 +1,8 @@
-# SEO Rank Tracker Stahl
+# SERP Tracker
+
+![SEO Rank Tracker Dashboard Screenshot](public/static/SEO-rank-tracker.png)
+
+![SEO Rank Tracker Open Graph Preview](public/static/og-image.png)
 
 A comprehensive tool for tracking your website's SEO keyword rankings over time.
 
@@ -12,6 +16,7 @@ A comprehensive tool for tracking your website's SEO keyword rankings over time.
 - Import and export data via CSV
 - Store data locally in your browser
 - Check current Google rankings via SERP API
+- Mobile-friendly, responsive design
 
 ## Getting Started
 
@@ -116,3 +121,4 @@ SERP API offers various pricing plans, including a free tier with limited search
 ## License
 
 MIT
+

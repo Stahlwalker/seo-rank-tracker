@@ -325,8 +325,8 @@ const RankingChart: React.FC<Props> = ({ data, setData, isLoading, isAdmin }) =>
               </div>
             </div>
 
-            <div className={`overflow-hidden border rounded-lg mb-4 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <div className={`overflow-x-auto w-full border rounded-lg mb-4 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <table className="min-w-[600px] sm:min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className={isDark ? 'bg-gray-800' : 'bg-gray-50'}>
                   <tr>
                     <th scope="col" className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
